@@ -14,9 +14,9 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 CDEBUGFLAGS = -g -DGC_DEBUG
-COPTFLAGS = -O2
+COPTFLAGS = -O2 -Ibdwgc/include
 CWARNFLAGS =  -Wall -Wno-switch -Wno-unused-but-set-variable
-LIBS = -lgc -lgccpp
+LIBS = -Lbdwgc -lgc -lgccpp
 CFLAGS = $(CDEBUGFLAGS) $(COPTFLAGS) $(CWARNFLAGS)
 CXXFLAGS = $(CDEBUGFLAGS) $(COPTFLAGS) $(CWARNFLAGS)
 
@@ -34,6 +34,12 @@ OBJS = $(CXXSRCS:.cpp=.o) $(CSRCS:.c=.o)
 
 mdli: $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS)
+
+bdwgc/libgc.la: bdwgc/BDWgcConfig.cmake
+	@(cd bdwgc && cmake --build .)
+
+bdwgc/BDWgcConfig.cmake:
+	@(cd bdwgc && ./autogen.sh && ./configure)
 
 copying.c: COPYING
 	awk 'BEGIN { print "const char copying [] = " } /END OF TERMS AND CONDITIONS/ { nextfile } { gsub("\"", "\\\"", $$0); print "\"" $$0 "\\n\""  } END { print ";" }'  < COPYING > copying.c
