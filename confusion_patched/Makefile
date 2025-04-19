@@ -14,9 +14,9 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 CDEBUGFLAGS = -g -DGC_DEBUG
-COPTFLAGS = -O2 -Ibdwgc/include
+COPTFLAGS = -O2 -I/opt/homebrew/include
 CWARNFLAGS =  -Wall -Wno-switch -Wno-unused-but-set-variable
-LIBS = -Lbdwgc -lgc -lgccpp
+LIBS = -L/opt/homebrew/lib -lgc -lgccpp
 CFLAGS = $(CDEBUGFLAGS) $(COPTFLAGS) $(CWARNFLAGS)
 CXXFLAGS = $(CDEBUGFLAGS) $(COPTFLAGS) $(CWARNFLAGS)
 
@@ -34,12 +34,6 @@ OBJS = $(CXXSRCS:.cpp=.o) $(CSRCS:.c=.o)
 
 mdli: $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS)
-
-bdwgc/libgc.la: bdwgc/BDWgcConfig.cmake
-	@(cd bdwgc && cmake --build .)
-
-bdwgc/BDWgcConfig.cmake:
-	@(cd bdwgc && ./autogen.sh && ./configure)
 
 copying.c: COPYING
 	awk 'BEGIN { print "const char copying [] = " } /END OF TERMS AND CONDITIONS/ { nextfile } { gsub("\"", "\\\"", $$0); print "\"" $$0 "\\n\""  } END { print ";" }'  < COPYING > copying.c
@@ -61,8 +55,7 @@ mdl_output.o: mdl_builtin_types.h mdl_builtins.h mdl_internal_defs.h
 mdl_read.o: mdl_builtin_types.h mdl_builtins.h mdl_internal_defs.h
 mdl_binary_io.o: mdl_builtin_types.h mdl_builtins.h mdl_internal_defs.h
 
-clean: 
-	rm -f *.o *~ $(PROGRAMS)
+clean:
+	rm -f $(OBJS) $(PROGRAMS) $(TMPSRCS)
 
-extraclean: clean
-	rm -f $(TMPSRCS)
+.PHONY: clean

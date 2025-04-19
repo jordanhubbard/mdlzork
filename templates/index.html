@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MDL Zork Web Launcher</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #33ff33;
+        }
+        h1 {
+            text-align: center;
+            color: #33ff33;
+            margin-bottom: 30px;
+        }
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        #controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        select, button {
+            background-color: #333;
+            color: #33ff33;
+            border: 1px solid #33ff33;
+            padding: 8px 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        select:focus, button:focus {
+            outline: none;
+            border-color: #66ff66;
+        }
+        button:hover {
+            background-color: #444;
+            cursor: pointer;
+        }
+        #terminal {
+            background-color: #000;
+            border: 1px solid #33ff33;
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+        #input-line {
+            display: flex;
+            gap: 10px;
+        }
+        #command-input {
+            flex-grow: 1;
+            background-color: #333;
+            color: #33ff33;
+            border: 1px solid #33ff33;
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        #command-input:focus {
+            outline: none;
+            border-color: #66ff66;
+        }
+    </style>
+</head>
+<body>
+    <h1>MDL Zork Web Launcher</h1>
+    <div id="game-container">
+        <div id="controls">
+            <select id="version-select">
+                {% for version in versions %}
+                <option value="{{ version }}">{{ version }}</option>
+                {% endfor %}
+            </select>
+            <button id="start-button">Start Game</button>
+        </div>
+        <div id="terminal"></div>
+        <div id="input-line">
+            <input type="text" id="command-input" placeholder="Enter command..." disabled>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const terminal = document.getElementById('terminal');
+        const versionSelect = document.getElementById('version-select');
+        const startButton = document.getElementById('start-button');
+        const commandInput = document.getElementById('command-input');
+
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+        socket.on('output', (data) => {
+            terminal.textContent += data.data;
+            terminal.scrollTop = terminal.scrollHeight;
+            commandInput.disabled = false;
+        });
+
+        socket.on('error', (data) => {
+            terminal.textContent += '\nError: ' + data.data + '\n';
+            terminal.scrollTop = terminal.scrollHeight;
+        });
+
+        startButton.addEventListener('click', () => {
+            terminal.textContent = '';
+            commandInput.disabled = true;
+            socket.emit('start_game', { version: versionSelect.value });
+        });
+
+        commandInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && commandInput.value.trim()) {
+                const command = commandInput.value;
+                commandInput.value = '';
+                socket.emit('input', { input: command });
+            }
+        });
+    </script>
+</body>
+</html>
