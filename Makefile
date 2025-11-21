@@ -1,5 +1,5 @@
 # Top-level Makefile for MDL Zork Web Launcher
-.PHONY: all clean clean-all venv deps interpreter run build run-native build-native run-native-server wasm-deps wasm-build wasm-serve wasm-all wasm-env check-emscripten package package-native package-wasm clean-releases help
+.PHONY: all clean clean-all venv deps interpreter run build run-native build-native run-native-server wasm-deps wasm-build wasm-serve wasm-all wasm-env check-emscripten package package-native package-wasm clean-releases help mdlzork_771212 mdlzork_780124 mdlzork_791211 mdlzork_810722
 
 # Python virtual environment
 VENV := venv
@@ -41,30 +41,70 @@ build-native: interpreter
 	@echo "✅ Native interpreter built!"
 	@echo ""
 	@echo "Usage options:"
-	@echo "  CLI: cd mdlzork_810722/patched_confusion && ../confusion-mdl/mdli -r SAVEFILE/ZORK.SAVE"
+	@echo "  CLI: cd mdlzork_810722 && ../confusion-mdl/mdli -r SAVEFILE/ZORK.SAVE"
 	@echo "  Server: make run-native-server"
 
-# Run native CLI version (for SSH/local terminal use)
+# Run native CLI version (compiled executable)
+# Usage: make run-native <game-name> [save-file]
+# Example: make run-native mdlzork_810722
+# Example: make run-native mdlzork_810722 SAVEFILE/ZORK.SAVE
 run-native: interpreter
-	@echo ""
-	@echo "Starting Zork in CLI mode..."
-	@echo "Available game versions:"
-	@echo "  - mdlzork_771212/patched_confusion"
-	@echo "  - mdlzork_780124/patched_confusion"
-	@echo "  - mdlzork_791211/patched_confusion"
-	@echo "  - mdlzork_810722/patched_confusion"
-	@echo ""
-	@echo "Example: cd mdlzork_810722/patched_confusion && ../confusion-mdl/mdli -r SAVEFILE/ZORK.SAVE"
-	@echo ""
-	@read -p "Enter game version path (or press Enter for 810722): " GAME_VERSION; \
-	GAME_VERSION=$${GAME_VERSION:-mdlzork_810722/patched_confusion}; \
-	if [ -d "$$GAME_VERSION" ]; then \
-		cd "$$GAME_VERSION" && ../confusion-mdl/mdli -r SAVEFILE/ZORK.SAVE 2>/dev/null || \
-		../confusion-mdl/mdli -r MDL/MADADV.SAVE 2>/dev/null || \
-		../confusion-mdl/mdli; \
-	else \
-		echo "Game version not found: $$GAME_VERSION"; \
+	@if [ -z "$(filter-out $@,$(MAKECMDGOALS))" ]; then \
+		echo ""; \
+		echo "Usage: make run-native <game-name> [save-file]"; \
+		echo ""; \
+		echo "Available games:"; \
+		echo "  - mdlzork_771212"; \
+		echo "  - mdlzork_780124"; \
+		echo "  - mdlzork_791211"; \
+		echo "  - mdlzork_810722"; \
+		echo ""; \
+		echo "Examples:"; \
+		echo "  make run-native mdlzork_810722"; \
+		echo "  make run-native mdlzork_810722 MDL/MADADV.SAVE"; \
+		echo ""; \
+		echo "Note: Save file is REQUIRED to bootstrap the game."; \
+		echo "  - If SAVEFILE contains exactly one file, it will be auto-selected."; \
+		echo "  - If SAVEFILE contains multiple files, you must specify one explicitly."; \
+		echo "  - Otherwise, falls back to MDL/MADADV.SAVE or MTRZORK/ZORK.SAVE"; \
+		exit 1; \
 	fi
+	@GAME_NAME=$(word 2,$(MAKECMDGOALS)); \
+	SAVE_FILE=$(word 3,$(MAKECMDGOALS)); \
+	if [ ! -d "$$GAME_NAME" ]; then \
+		echo "Error: Game directory '$$GAME_NAME' not found"; \
+		echo "Available games: mdlzork_771212 mdlzork_780124 mdlzork_791211 mdlzork_810722"; \
+		exit 1; \
+	fi; \
+	cd "$$GAME_NAME" && \
+	if [ -n "$$SAVE_FILE" ]; then \
+		../confusion-mdl/mdli -r "$$SAVE_FILE"; \
+	else \
+		SAVEFILE_COUNT=0; \
+		if [ -d "SAVEFILE" ]; then \
+			SAVEFILE_COUNT=$$(ls -1 "SAVEFILE" 2>/dev/null | wc -l | tr -d ' '); \
+		fi; \
+		if [ "$$SAVEFILE_COUNT" -eq 1 ]; then \
+			AUTO_SAVE=$$(ls -1 "SAVEFILE" | head -1); \
+			echo "Auto-selecting save file: SAVEFILE/$$AUTO_SAVE"; \
+			../confusion-mdl/mdli -r "SAVEFILE/$$AUTO_SAVE"; \
+		elif [ "$$SAVEFILE_COUNT" -gt 1 ]; then \
+			echo "Error: Multiple save files found in SAVEFILE directory:"; \
+			ls -1 "SAVEFILE" | sed 's/^/  - SAVEFILE\//'; \
+			echo ""; \
+			echo "Please specify which save file to use:"; \
+			echo "  make run-native $$GAME_NAME SAVEFILE/<filename>"; \
+			exit 1; \
+		elif [ -f "MDL/MADADV.SAVE" ]; then \
+			../confusion-mdl/mdli -r "MDL/MADADV.SAVE"; \
+		elif [ -f "MTRZORK/ZORK.SAVE" ]; then \
+			../confusion-mdl/mdli -r "MTRZORK/ZORK.SAVE"; \
+		else \
+			echo "Error: No save file found. Tried SAVEFILE directory, MDL/MADADV.SAVE, MTRZORK/ZORK.SAVE"; \
+			exit 1; \
+		fi; \
+	fi
+
 
 # Run native web server version (requires Python deps)
 run-native-server: interpreter deps
@@ -81,7 +121,7 @@ wasm-all: wasm-deps wasm-build
 	@echo "  make run"
 	@echo "  or: make wasm-serve"
 	@echo ""
-	@echo "Then open: http://localhost:8000/$(WASM_BUILD_DIR)/test_wasm.html"
+	@echo "Then open: http://localhost:8000/test_wasm.html"
 
 # Set up Python virtual environment
 $(VENV)/bin/activate:
@@ -110,14 +150,14 @@ $(CONFUSION_INTERPRETER):
 # Clean Python-related files
 clean:
 	rm -rf $(VENV)
-	find . -type d -name "__pycache__" -exec rm -rf {} +
-	find . -type f -name "*.pyc" -delete
-	find . -type f -name "*.pyo" -delete
-	find . -type f -name "*.pyd" -delete
-	find . -type f -name ".DS_Store" -delete
-	find . -type d -name "*.egg-info" -exec rm -rf {} +
-	find . -type f -name "*.egg" -delete
-	find . -type f -name "*.log" -delete
+	find . -type d -name "__pycache__" -not -path "./emsdk/*" -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -not -path "./emsdk/*" -delete 2>/dev/null || true
+	find . -type f -name "*.pyo" -not -path "./emsdk/*" -delete 2>/dev/null || true
+	find . -type f -name "*.pyd" -not -path "./emsdk/*" -delete 2>/dev/null || true
+	find . -type f -name ".DS_Store" -not -path "./emsdk/*" -delete 2>/dev/null || true
+	find . -type d -name "*.egg-info" -not -path "./emsdk/*" -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.egg" -not -path "./emsdk/*" -delete 2>/dev/null || true
+	find . -type f -name "*.log" -not -path "./emsdk/*" -delete 2>/dev/null || true
 
 # Clean everything including compiled interpreter
 clean-all: clean clean-wasm
@@ -169,7 +209,7 @@ check-emscripten:
 	@echo "✅ Emscripten found: $$(emcc --version | head -1)"
 
 # Build WASM version
-wasm-build: check-emscripten $(WASM_BUILD_DIR)
+wasm-build: check-emscripten
 	@echo "Building WASM interpreter..."
 	@echo "Source Emscripten environment..."
 	@if [ -f $(EMSDK_ACTIVATE) ]; then \
@@ -188,15 +228,11 @@ wasm-build: check-emscripten $(WASM_BUILD_DIR)
 	fi
 	@echo "✅ WASM files copied to $(WASM_BUILD_DIR)/"
 
-# Create WASM build directory
-$(WASM_BUILD_DIR):
-	mkdir -p $(WASM_BUILD_DIR)
-
 # Serve WASM build for testing
 wasm-serve: wasm-build
 	@echo ""
 	@echo "Starting web server on port 8000..."
-	@echo "Open: http://localhost:8000/$(WASM_BUILD_DIR)/test_wasm.html"
+	@echo "Open: http://localhost:8000/test_wasm.html"
 	@echo ""
 	@echo "Press Ctrl+C to stop"
 	@cd $(WASM_BUILD_DIR) && python3 -m http.server 8000 || \
@@ -236,7 +272,7 @@ package-native: build-native
 	@cp -r mdlzork_810722 $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/ 2>/dev/null || true
 	@echo "Creating launcher scripts..."
 	@echo '#!/bin/bash' > $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/play-zork-810722.sh
-	@echo 'cd mdlzork_810722/patched_confusion' >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/play-zork-810722.sh
+	@echo 'cd mdlzork_810722' >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/play-zork-810722.sh
 	@echo '../mdli -r SAVEFILE/ZORK.SAVE 2>/dev/null || ../mdli -r MDL/MADADV.SAVE 2>/dev/null || ../mdli' >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/play-zork-810722.sh
 	@chmod +x $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/play-zork-810722.sh
 	@echo "MDL Zork Native Release" > $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
@@ -247,7 +283,7 @@ package-native: build-native
 	@echo "- Multiple Zork game versions" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
 	@echo "" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
 	@echo "To play:" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "  cd mdlzork_810722/patched_confusion" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
+	@echo "  cd mdlzork_810722" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
 	@echo "  ../mdli -r SAVEFILE/ZORK.SAVE" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
 	@echo "" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
 	@echo "Or use the launcher script:" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt

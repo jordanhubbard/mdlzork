@@ -17,10 +17,10 @@ app = Flask(__name__)
 socketio = SocketIO(app)
 
 VERSIONS = {
-    "Zork 1977-12-12 (500 points)": "mdlzork_771212/patched_confusion",
-    "Zork 1978-01-24 (with end-game)": "mdlzork_780124/patched_confusion",
-    "Zork 1979-12-11 (616 points)": "mdlzork_791211/patched_confusion",
-    "Zork 1981-07-22 (Final MDL)": "mdlzork_810722/patched_confusion",
+    "Zork 1977-12-12 (500 points)": "mdlzork_771212",
+    "Zork 1978-01-24 (with end-game)": "mdlzork_780124",
+    "Zork 1979-12-11 (616 points)": "mdlzork_791211",
+    "Zork 1981-07-22 (Final MDL)": "mdlzork_810722",
     "Dungeon 3.2b (Fortran)": "dungeon_3_2b"
 }
 
