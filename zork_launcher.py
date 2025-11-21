@@ -93,10 +93,10 @@ def start_game(data):
         cmd = [str(dungeon_path)]
         cwd = str(game_dir)
     else:
-        confusion_path = base_dir / "confusion_patched" / "mdli"
+        confusion_path = base_dir / "confusion-mdl" / "mdli"
         if not confusion_path.exists():
             emit('error', {'data': 'MDL interpreter (confusion) not found. To build it:\n\n'
-                                 '1. cd confusion_patched\n'
+                                 '1. cd confusion-mdl\n'
                                  '2. make\n\n'
                                  'If you encounter build errors, you may need to:\n'
                                  '1. Install development tools (Xcode command line tools)\n'
