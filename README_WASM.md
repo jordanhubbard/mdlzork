@@ -5,21 +5,15 @@ This project can now be built to run entirely in a web browser using WebAssembly
 ## Quick Start
 
 ```bash
-# 1. Install dependencies (one-time, takes ~10-15 minutes)
-make wasm-deps
+# 1. Build everything (installs Emscripten automatically)
+make build
 
-# 2. Activate Emscripten environment
-source emsdk/emsdk_env.sh
-
-# 3. Build WASM version
-make wasm-all
-
-# 4. Test in browser
-make wasm-serve
-# Then open: http://localhost:8000/wasm-build/test_wasm.html
+# 2. Test in browser
+make run
+# Then open: http://localhost:8000/test_wasm.html
 ```
 
-That's it! The application will run entirely in the browser - no server needed after the initial build.
+That's it! The build system handles Emscripten installation and activation automatically. The application will run entirely in the browser - no server needed after the initial build.
 
 ## What Gets Built
 
@@ -32,11 +26,10 @@ That's it! The application will run entirely in the browser - no server needed a
 
 ### WASM Build Targets
 
-- `make wasm-deps` - Install Emscripten SDK (first time only, ~10-15 min)
-- `make wasm-build` - Build WASM version (requires Emscripten activated)
-- `make wasm-all` - Install deps and build WASM
-- `make wasm-serve` - Build WASM and start test server
-- `make wasm-env` - Show commands to activate Emscripten
+- `make build` - Build WASM version (installs Emscripten if needed)
+- `make run` - Build WASM and start test server
+- `make wasm-deps` - Install Emscripten SDK manually (optional)
+- `make wasm-build` - Build WASM version only
 - `make clean-wasm` - Clean WASM build artifacts
 
 ### Native Build Targets (still available)
@@ -63,24 +56,19 @@ No other dependencies needed! The Makefile handles everything.
 
 ## Troubleshooting
 
-### "Emscripten not found"
-```bash
-source emsdk/emsdk_env.sh
-# Then try again
-```
+### "Emscripten SDK not found"
+Run `make wasm-deps` to install Emscripten. The build system handles activation automatically.
 
 ### "Game files not found"
 The build will work without game files, but you won't be able to load games. Make sure `mdlzork_810722/patched_confusion` exists.
 
-### "Python not found" (for wasm-serve)
+### "Python not found" (for test server)
 Install Python 3, or serve files manually with any web server.
 
 ### Build errors
-Check that you've activated Emscripten:
-```bash
-source emsdk/emsdk_env.sh
-emcc --version  # Should show version
-```
+- Verify `scripts/with-emsdk.sh` exists and is executable
+- Check that Emscripten SDK is installed in `emsdk/` directory
+- Run `make clean-wasm && make build` to rebuild from scratch
 
 ## Next Steps
 

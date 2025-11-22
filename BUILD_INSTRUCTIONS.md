@@ -7,19 +7,15 @@ Build a version that runs entirely in the browser - no server needed!
 ### Quick Start
 
 ```bash
-# 1. Install Emscripten (one-time, ~10-15 minutes)
-make wasm-deps
+# 1. Build everything (installs Emscripten automatically if needed)
+make build
 
-# 2. Activate Emscripten
-source emsdk/emsdk_env.sh
-
-# 3. Build everything
-make wasm-all
-
-# 4. Test in browser
-make wasm-serve
-# Open: http://localhost:8000/wasm-build/test_wasm.html
+# 2. Test in browser
+make run
+# Open: http://localhost:8000/test_wasm.html
 ```
+
+That's it! The build system handles Emscripten installation and activation automatically.
 
 ### What You Get
 
@@ -56,11 +52,10 @@ make run
 ## All Make Targets
 
 ### WASM Build (Browser)
-- `make wasm-deps` - Install Emscripten SDK (first time)
-- `make wasm-build` - Build WASM version
-- `make wasm-all` - Install deps + build
-- `make wasm-serve` - Build + start test server
-- `make wasm-env` - Show Emscripten activation commands
+- `make build` - Build WASM version (installs Emscripten if needed)
+- `make run` - Build WASM and start test server
+- `make wasm-deps` - Install Emscripten SDK manually (optional)
+- `make wasm-build` - Build WASM version only
 - `make clean-wasm` - Clean WASM artifacts
 
 ### Native Build (Server)
@@ -95,20 +90,17 @@ make run
 
 ### WASM Build Issues
 
-**"Emscripten not found"**
-```bash
-source emsdk/emsdk_env.sh
-# Verify:
-emcc --version
-```
+**"Emscripten SDK not found"**
+- Run `make wasm-deps` to install Emscripten
+- The build system handles activation automatically
 
 **"Game files not found"**
 - Build will work but games won't load
 - Ensure `mdlzork_810722/patched_confusion` exists
 
 **Build errors**
-- Make sure Emscripten is activated: `source emsdk/emsdk_env.sh`
 - Check that `gc_stub.h` exists in `confusion-mdl/`
+- Verify `scripts/with-emsdk.sh` is executable
 
 ### Native Build Issues
 

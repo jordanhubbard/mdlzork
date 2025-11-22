@@ -1,5 +1,5 @@
 # Top-level Makefile for MDL Zork Web Launcher
-.PHONY: all clean clean-all venv deps interpreter run build run-native build-native run-native-server wasm-deps wasm-build wasm-serve wasm-all wasm-env check-emscripten package package-native package-wasm clean-releases help mdlzork_771212 mdlzork_780124 mdlzork_791211 mdlzork_810722
+.PHONY: all clean clean-all venv deps interpreter run build run-native build-native run-native-server wasm-deps wasm-build wasm-serve wasm-all package package-native package-wasm clean-releases help mdlzork_771212 mdlzork_780124 mdlzork_791211 mdlzork_810722
 
 # Python virtual environment
 VENV := venv
@@ -113,7 +113,7 @@ run-native-server: interpreter deps
 	$(PYTHON) zork_launcher.py
 
 # WASM build target - builds browser-ready application
-wasm-all: wasm-deps wasm-build
+wasm-all: wasm-build
 	@echo ""
 	@echo "✅ WASM build complete!"
 	@echo ""
@@ -184,41 +184,13 @@ $(EMSDK_ACTIVATE): $(EMSDK_DIR)
 	cd $(EMSDK_DIR) && ./emsdk install latest
 	cd $(EMSDK_DIR) && ./emsdk activate latest
 	@echo "✅ Emscripten SDK installed and activated"
-	@echo ""
-	@echo "⚠️  IMPORTANT: Run 'source $(EMSDK_ACTIVATE)' in your shell before building"
-	@echo "   Or use: eval \$$(make wasm-env)"
 
-# Export Emscripten environment variables
-wasm-env:
-	@echo "export PATH=\"$$(pwd)/$(EMSDK_DIR)/upstream/emscripten:$$PATH\""
-	@echo "export EMSDK=\"$$(pwd)/$(EMSDK_DIR)\""
-	@echo "export EM_CONFIG=\"$$(pwd)/$(EMSDK_DIR)/.emscripten\""
 
-# Check if Emscripten is available
-check-emscripten:
-	@if ! command -v emcc >/dev/null 2>&1; then \
-		echo "❌ Emscripten not found in PATH"; \
-		echo ""; \
-		echo "Please run:"; \
-		echo "  source $(EMSDK_ACTIVATE)"; \
-		echo ""; \
-		echo "Or:"; \
-		echo "  eval \$$(make wasm-env)"; \
-		exit 1; \
-	fi
-	@echo "✅ Emscripten found: $$(emcc --version | head -1)"
 
 # Build WASM version
-wasm-build: check-emscripten
+wasm-build: wasm-deps
 	@echo "Building WASM interpreter..."
-	@echo "Source Emscripten environment..."
-	@if [ -f $(EMSDK_ACTIVATE) ]; then \
-		. $(EMSDK_ACTIVATE) && \
-		$(MAKE) -C $(CONFUSION_DIR) -f Makefile.wasm; \
-	else \
-		echo "❌ Emscripten not installed. Run 'make wasm-deps' first."; \
-		exit 1; \
-	fi
+	@./scripts/with-emsdk.sh $(MAKE) -C $(CONFUSION_DIR) -f Makefile.wasm
 	@echo "Copying WASM files to build directory..."
 	@mkdir -p $(WASM_BUILD_DIR)
 	@cp $(CONFUSION_DIR)/mdli.js $(CONFUSION_DIR)/mdli.wasm $(WASM_BUILD_DIR)/ 2>/dev/null || true
@@ -374,10 +346,9 @@ help:
 	@echo "WASM Build Targets (Browser Application):"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "  make wasm-deps    - Install Emscripten SDK (first time only, ~10-15 min)"
-	@echo "  make wasm-build    - Build WASM version (requires Emscripten activated)"
-	@echo "  make wasm-all      - Install deps and build WASM"
+	@echo "  make wasm-build    - Build WASM version"
+	@echo "  make wasm-all      - Build WASM (alias for wasm-build)"
 	@echo "  make wasm-serve    - Build WASM and start test server"
-	@echo "  make wasm-env      - Show commands to activate Emscripten"
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "Native Build Targets (Server Application):"
@@ -405,8 +376,7 @@ help:
 	@echo "Quick Start (Browser Application):"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "  1. make build          # Builds WASM (installs Emscripten if needed)"
-	@echo "  2. source emsdk/emsdk_env.sh  # Activate Emscripten (if first time)"
-	@echo "  3. make run            # Start test server and open in browser"
+	@echo "  2. make run            # Start test server and open in browser"
 	@echo ""
 	@echo "Quick Start (Native CLI Application):"
 	@echo "  1. make build-native  # Build native interpreter"
