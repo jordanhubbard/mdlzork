@@ -103,7 +103,33 @@ def start_game(data):
                                  '2. Install required libraries (e.g., libgc)\n'
                                  'Please check the README or build instructions for more details.'})
             return
-        cmd = [str(confusion_path), "-r", "SAVEFILE/ZORK.SAVE"]
+        
+        # Find the save file using the same logic as the Makefile
+        save_file = None
+        savefile_dir = game_dir / "SAVEFILE"
+        
+        # Check SAVEFILE directory first
+        if savefile_dir.exists() and savefile_dir.is_dir():
+            save_files = list(savefile_dir.glob("*"))
+            if len(save_files) == 1:
+                save_file = f"SAVEFILE/{save_files[0].name}"
+            elif len(save_files) > 1:
+                # Use first one if multiple exist
+                save_file = f"SAVEFILE/{save_files[0].name}"
+        
+        # Fall back to MDL/MADADV.SAVE
+        if not save_file and (game_dir / "MDL" / "MADADV.SAVE").exists():
+            save_file = "MDL/MADADV.SAVE"
+        
+        # Fall back to MTRZORK/ZORK.SAVE
+        if not save_file and (game_dir / "MTRZORK" / "ZORK.SAVE").exists():
+            save_file = "MTRZORK/ZORK.SAVE"
+        
+        if not save_file:
+            emit('error', {'data': 'No save file found. Tried:\n- SAVEFILE directory\n- MDL/MADADV.SAVE\n- MTRZORK/ZORK.SAVE'})
+            return
+        
+        cmd = [str(confusion_path), "-r", save_file]
         cwd = str(game_dir)
 
     pid = os.fork()
@@ -133,4 +159,4 @@ def start_game(data):
         thread.start()
 
 if __name__ == "__main__":
-    socketio.run(app, debug=True, port=5001)
+    socketio.run(app, debug=True, port=5001, allow_unsafe_werkzeug=True)
