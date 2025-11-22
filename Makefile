@@ -25,15 +25,15 @@ all: interpreter deps
 # ============================================================================
 
 # Build browser-ready WASM application (default)
-build: wasm-all
+build: build-native
 	@echo ""
-	@echo "✅ Build complete! Browser-ready application in $(WASM_BUILD_DIR)/"
+	@echo "⚠️  Note: WASM build not yet implemented"
+	@echo "✅ Native interpreter built instead"
 	@echo ""
-	@echo "To run: make run"
-	@echo "Or: make wasm-serve"
+	@echo "To run: make run-native"
 
-# Run WASM application in browser (default)
-run: wasm-serve
+# Run application (defaults to native server for now)
+run: run-native-server
 
 # Build native interpreter (CLI or server use)
 build-native: interpreter
@@ -113,15 +113,19 @@ run-native-server: interpreter deps
 	$(PYTHON) zork_launcher.py
 
 # WASM build target - builds browser-ready application
-wasm-all: wasm-build
+wasm-all:
 	@echo ""
-	@echo "✅ WASM build complete!"
+	@echo "⚠️  WASM build not yet implemented"
 	@echo ""
-	@echo "To test in browser:"
-	@echo "  make run"
-	@echo "  or: make wasm-serve"
+	@echo "The WASM build infrastructure (Makefile.wasm, gc_stub.h, etc.)"
+	@echo "needs to be created in the confusion-mdl directory."
 	@echo ""
-	@echo "Then open: http://localhost:8000/test_wasm.html"
+	@echo "For now, use native builds:"
+	@echo "  make build-native       # Build native interpreter"
+	@echo "  make run-native         # Run CLI version"
+	@echo "  make run-native-server  # Run web server version"
+	@echo ""
+	@exit 1
 
 # Set up Python virtual environment
 $(VENV)/bin/activate:
@@ -141,6 +145,13 @@ $(CONFUSION_INTERPRETER):
 	@if [ ! -f /opt/homebrew/lib/libgc.dylib ]; then \
 		echo "Installing Boehm GC via Homebrew..."; \
 		brew install bdw-gc; \
+	fi
+	@# Patch Makefile to use pkg-config for GC
+	@if ! grep -q "pkg-config" $(CONFUSION_DIR)/Makefile; then \
+		echo "Patching confusion-mdl Makefile for pkg-config support..."; \
+		sed -i.bak 's|^LIBS = -lgc -lgccpp|GC_CFLAGS := $$(shell pkg-config --cflags bdw-gc 2>/dev/null \|\| echo "-I/opt/homebrew/include")\nGC_LIBS := $$(shell pkg-config --libs bdw-gc 2>/dev/null \|\| echo "-L/opt/homebrew/lib -lgc")\nLIBS = $$(GC_LIBS) -lgccpp|' $(CONFUSION_DIR)/Makefile; \
+		sed -i.bak 's|^CFLAGS = \(.*\)|CFLAGS = \1 $$(GC_CFLAGS)|' $(CONFUSION_DIR)/Makefile; \
+		sed -i.bak 's|^CXXFLAGS = \(.*\)|CXXFLAGS = \1 $$(GC_CFLAGS)|' $(CONFUSION_DIR)/Makefile; \
 	fi
 	$(MAKE) -C $(CONFUSION_DIR)
 
@@ -187,29 +198,27 @@ $(EMSDK_ACTIVATE): $(EMSDK_DIR)
 
 
 
-# Build WASM version
-wasm-build: wasm-deps
-	@echo "Building WASM interpreter..."
-	@./scripts/with-emsdk.sh $(MAKE) -C $(CONFUSION_DIR) -f Makefile.wasm
-	@echo "Copying WASM files to build directory..."
-	@mkdir -p $(WASM_BUILD_DIR)
-	@cp $(CONFUSION_DIR)/mdli.js $(CONFUSION_DIR)/mdli.wasm $(WASM_BUILD_DIR)/ 2>/dev/null || true
-	@cp $(CONFUSION_DIR)/test_wasm.html $(WASM_BUILD_DIR)/
-	@if [ -f $(CONFUSION_DIR)/mdli.data ]; then \
-		cp $(CONFUSION_DIR)/mdli.data $(WASM_BUILD_DIR)/; \
-	fi
-	@echo "✅ WASM files copied to $(WASM_BUILD_DIR)/"
+# Build WASM version (not yet implemented)
+wasm-build:
+	@echo "⚠️  WASM build not implemented yet"
+	@echo ""
+	@echo "To implement WASM support, you need to:"
+	@echo "  1. Create confusion-mdl/Makefile.wasm with Emscripten build rules"
+	@echo "  2. Create confusion-mdl/gc_stub.h to replace Boehm GC"
+	@echo "  3. Configure Emscripten flags for browser compatibility"
+	@echo ""
+	@echo "The wrapper script (scripts/with-emsdk.sh) is ready to use when you create Makefile.wasm"
+	@echo ""
+	@exit 1
 
 # Serve WASM build for testing
-wasm-serve: wasm-build
+wasm-serve:
+	@echo "⚠️  WASM build not implemented yet"
 	@echo ""
-	@echo "Starting web server on port 8000..."
-	@echo "Open: http://localhost:8000/test_wasm.html"
+	@echo "Use native server instead:"
+	@echo "  make run-native-server"
 	@echo ""
-	@echo "Press Ctrl+C to stop"
-	@cd $(WASM_BUILD_DIR) && python3 -m http.server 8000 || \
-		python -m SimpleHTTPServer 8000 || \
-		(echo "❌ Python not found. Please install Python 3" && exit 1)
+	@exit 1
 
 # Clean WASM build artifacts
 clean-wasm:
