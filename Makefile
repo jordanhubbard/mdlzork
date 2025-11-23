@@ -185,12 +185,12 @@ wasm-serve: wasm-build
 	@echo ""
 	@echo "Starting web server for WASM build..."
 	@echo "  📡 Server: http://localhost:8000"
-	@echo "  📄 Main UI: http://localhost:8000/index.html"
-	@echo "  🧪 Test page: http://localhost:8000/test-simple.html"
+	@echo "  📄 Main UI: http://localhost:8000/web/"
+	@echo "  🧪 Test page: http://localhost:8000/web/test-simple.html"
 	@echo ""
 	@echo "Press Ctrl+C to stop server"
 	@echo ""
-	cd web && python3 -m http.server 8000
+	python3 -m http.server 8000
 
 # Alias
 serve-wasm: wasm-serve
