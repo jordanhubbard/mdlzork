@@ -1,11 +1,8 @@
 # Top-level Makefile for MDL Zork Web Launcher
 .PHONY: all clean clean-all venv deps interpreter run build run-native build-native run-native-server wasm-deps wasm-build wasm-serve wasm-all package package-native package-wasm clean-releases help mdlzork_771212 mdlzork_780124 mdlzork_791211 mdlzork_810722
 
-# Python virtual environment
-VENV := venv
-PYTHON := $(VENV)/bin/python
-PIP := $(VENV)/bin/pip
-SERVER_PORT := 5001
+# Local test server port
+SERVER_PORT := 8000
 
 # Interpreter paths
 CONFUSION_DIR := confusion-mdl
@@ -17,8 +14,8 @@ EMSDK_ACTIVATE := $(EMSDK_DIR)/emsdk_env.sh
 WASM_BUILD_DIR := wasm-build
 WASM_INTERPRETER := $(CONFUSION_DIR)/mdli.js
 
-# Default target (backward compatibility)
-all: interpreter deps
+# Default target - build WASM
+all: build
 
 # ============================================================================
 # High-Level Targets (Recommended)
@@ -37,8 +34,8 @@ build: wasm-build
 	@echo "To test: make serve-wasm"
 	@echo "Then open: http://localhost:8000/index.html"
 
-# Run application (defaults to WASM in browser)
-run: wasm-serve
+# Run application (serve WASM in browser)
+run: serve-wasm
 
 # Build native interpreter (CLI or server use)
 build-native: interpreter
@@ -111,11 +108,16 @@ run-native: interpreter
 	fi
 
 
-# Run native web server version (requires Python deps)
-run-native-server: interpreter deps
-	@echo "Starting Zork Web Launcher on port $(SERVER_PORT)..."
-	@echo "Visit http://localhost:$(SERVER_PORT) in your browser"
-	$(PYTHON) zork_launcher.py
+# Legacy Flask server removed - use WASM version instead
+run-native-server:
+	@echo "❌ Flask server has been removed"
+	@echo ""
+	@echo "The Flask-based server is no longer available."
+	@echo "Please use the WASM version instead:"
+	@echo ""
+	@echo "  make run       # Serve WASM version"
+	@echo ""
+	@exit 1
 
 # WASM build target - builds browser-ready application
 wasm-build: wasm-deps
@@ -125,16 +127,6 @@ wasm-build: wasm-deps
 
 # Alias for wasm-build
 wasm-all: wasm-build
-
-# Set up Python virtual environment
-$(VENV)/bin/activate:
-	python3 -m venv $(VENV)
-
-venv: $(VENV)/bin/activate
-
-# Install Python dependencies
-deps: venv
-	$(PIP) install -r requirements.txt
 
 # Build the MDL interpreter
 interpreter: $(CONFUSION_INTERPRETER)
@@ -157,16 +149,9 @@ $(CONFUSION_INTERPRETER):
 # Run the web server (legacy - use run-native for explicit native server)
 # Note: 'run' now defaults to WASM version - use 'run-native' for server version
 
-# Clean Python-related files
+# Clean build artifacts
 clean:
-	rm -rf $(VENV)
-	find . -type d -name "__pycache__" -not -path "./emsdk/*" -exec rm -rf {} + 2>/dev/null || true
-	find . -type f -name "*.pyc" -not -path "./emsdk/*" -delete 2>/dev/null || true
-	find . -type f -name "*.pyo" -not -path "./emsdk/*" -delete 2>/dev/null || true
-	find . -type f -name "*.pyd" -not -path "./emsdk/*" -delete 2>/dev/null || true
 	find . -type f -name ".DS_Store" -not -path "./emsdk/*" -delete 2>/dev/null || true
-	find . -type d -name "*.egg-info" -not -path "./emsdk/*" -exec rm -rf {} + 2>/dev/null || true
-	find . -type f -name "*.egg" -not -path "./emsdk/*" -delete 2>/dev/null || true
 	find . -type f -name "*.log" -not -path "./emsdk/*" -delete 2>/dev/null || true
 
 # Clean everything including compiled interpreter

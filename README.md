@@ -1,29 +1,47 @@
 # MDL Zork - Original Mainframe Zork Collection
 
-Play the original mainframe Zork games written in MDL (MIT Design Language) from 1977-1981. This repository includes multiple versions of the game and a modernized build system that supports both native terminal play and browser-based WASM builds.
+Play the original mainframe Zork games written in MDL (MIT Design Language) from 1977-1981, compiled to WebAssembly and running entirely in your browser as a Progressive Web App.
+
+🎮 **Play Online**: https://jordanhubbard.github.io/mdlzork/ _(auto-deployed from master)_
+
+## ✨ Features
+
+- 🌐 **Runs Entirely in Browser** - No server required after initial load
+- 📱 **Progressive Web App** - Install on desktop or mobile
+- 💾 **Save/Load with IndexedDB** - Persistent saves across sessions
+- 📤 **Export/Import Saves** - Share saves between devices
+- 🎮 **4 Game Versions** - Play Zork from 1977 to 1981
+- ⚡ **Offline Support** - Play without internet after first load
+- 🖥️ **Retro Terminal** - Authentic green-on-black aesthetic with xterm.js
 
 ## Quick Start
 
-### Play in Browser (WASM - Recommended for End Users)
+### Play Online (Easiest)
+
+Visit **https://jordanhubbard.github.io/mdlzork/** to play immediately - no installation required!
+
+### Build and Run Locally
 
 ```bash
-# Build and run in browser (installs Emscripten automatically)
+# Build WASM and start local server
 make run
 
-# Then open: http://localhost:8000/test_wasm.html
+# Then open: http://localhost:8000/
 ```
 
-The WASM build runs entirely in your browser - no server needed after initial build!
+The app will automatically cache itself for offline use.
 
-### Play in Terminal (Native)
+### Native Terminal Build (Advanced)
+
+For running in a native terminal (no browser):
 
 ```bash
-# Build native interpreter and run
+# Build native interpreter
 make build-native
-make run-native
-```
 
-Interactive game selection with direct terminal play.
+# Run specific game version
+make run-native mdlzork_810722
+```
 
 ## Game Versions
 
@@ -50,24 +68,25 @@ Recovered binary files that work with MDL in the [PDP-10 ITS emulator](https://g
 
 ## Build System
 
-This project includes a comprehensive Makefile that handles everything automatically.
-
-### WASM Build (Browser Application)
+### WASM Build (Progressive Web App)
 
 ```bash
-make build          # Build WASM version (installs Emscripten if needed)
-make run            # Build and serve test page
-make wasm-deps      # Install Emscripten SDK manually (optional)
-make clean-wasm     # Clean WASM build artifacts
+make build          # Build WASM (auto-installs Emscripten)
+make run            # Build and serve on localhost:8000
+make wasm-deps      # Install Emscripten SDK manually
+make clean-wasm     # Clean WASM artifacts
 ```
 
 **Requirements:**
 - Git (for Emscripten SDK)
-- Python 3 (for test server)
+- Python 3 (for local test server only)
 - Make
-- ~500 MB disk space
+- ~500 MB disk space for Emscripten
 
-**Output:** `wasm-build/` directory with browser-ready files
+**Output:**
+- `confusion-mdl/mdli.js` (203KB) - Emscripten glue code
+- `confusion-mdl/mdli.wasm` (2.0MB) - Compiled interpreter  
+- `confusion-mdl/mdli.data` (16MB) - All 4 game versions
 
 ### Native Build (Terminal Application)
 
@@ -85,41 +104,28 @@ make clean-native        # Clean native artifacts
 
 **Output:** `confusion-mdl/mdli` executable
 
-### Release Packaging
-
-```bash
-make package         # Package both native and WASM releases
-make package-native  # Package native release only
-make package-wasm    # Package WASM release only
-```
-
-Creates distribution-ready archives in `releases/` directory.
-
 ## Playing the Games
 
-### Browser (WASM)
+### In Browser (Recommended)
 
-1. Build: `make build`
-2. Serve: `make wasm-serve` or use any web server
-3. Open `test_wasm.html` in browser
-4. Game runs entirely client-side (works offline after initial load)
+1. Visit https://jordanhubbard.github.io/mdlzork/ OR
+2. Run locally: `make run` → open http://localhost:8000/
+3. Select game version (1977-1981)
+4. Click "Start Game"
+5. Type commands in the terminal
+
+**Game Controls:**
+- Type commands and press Enter
+- Up/Down arrows for command history
+- Ctrl+C to interrupt
+- Save/Load buttons to manage progress
+- Export/Import to share saves
 
 ### Terminal (Native CLI)
 
 ```bash
-# Interactive launcher
-make run-native
-
-# Or manually:
-cd mdlzork_810722/patched_confusion
-../../confusion-mdl/mdli -r SAVEFILE/ZORK.SAVE
-```
-
-### Web Interface (Native Server)
-
-```bash
-make run-native-server
-# Visit: http://localhost:5001
+cd mdlzork_810722
+../confusion-mdl/mdli -r SAVEFILE/ZORK.SAVE
 ```
 
 ## Manual MDL Usage
@@ -150,53 +156,88 @@ To start directly from a save file:
 
 ```
 mdlzork/
-├── Makefile              # Build system (handles everything!)
+├── .github/workflows/    # CI/CD for auto-deployment
+│   ├── deploy-wasm.yml   # Deploy to GitHub Pages
+│   └── test-build.yml    # PR build validation
+├── web/                  # Progressive Web App
+│   ├── index.html        # Main UI
+│   ├── app.js            # Game logic + WASM integration
+│   ├── style.css         # Retro terminal styling
+│   ├── sw.js             # Service Worker (offline support)
+│   ├── manifest.json     # PWA manifest
+│   ├── icon.svg          # App icon
+│   └── offline.html      # Offline fallback page
 ├── confusion-mdl/        # MDL interpreter (submodule)
 │   ├── Makefile          # Native build
 │   ├── Makefile.wasm     # WASM build
-│   └── gc_stub.h         # GC replacement for WASM
-├── scripts/
-│   └── with-emsdk.sh     # Emscripten environment wrapper
-├── wasm-build/           # WASM output (created by build)
-├── releases/             # Packaged releases (created by package)
-├── emsdk/                # Emscripten SDK (installed by wasm-deps)
-├── mdlzork_771212/       # Zork 1977-12-12
-├── mdlzork_780124/       # Zork 1978-01-24
-├── mdlzork_791211/       # Zork 1979-12-11
-├── mdlzork_810722/       # Zork 1981-07-22 (recommended)
+│   ├── gc_stub.h/cpp     # GC replacement for WASM
+│   └── wasm_config.h     # WASM configuration
+├── emsdk/                # Emscripten SDK (auto-installed)
+├── mdlzork_771212/       # Zork 1977-12-12 (500 points)
+├── mdlzork_780124/       # Zork 1978-01-24 (with end-game)
+├── mdlzork_791211/       # Zork 1979-12-11 (616 points)
+├── mdlzork_810722/       # Zork 1981-07-22 (final MDL)
 ├── dungeon_3_2b/         # Fortran version
-└── zork_285/             # ZIL version
+├── zork_285/             # ZIL version (June 1977)
+├── Makefile              # Build system
+└── PLAN.md               # Migration plan documentation
 ```
+
+## Architecture
+
+### WASM Build Pipeline
+1. **C/C++ Source** (confusion-mdl/) → Emscripten → **WASM**
+2. **GC Replacement**: Boehm GC → malloc/free stub (gc_stub.h)
+3. **Game Files**: 4 versions preloaded into 16MB .data file
+4. **Web App**: xterm.js terminal + IndexedDB saves + Service Worker
+
+### Deployment
+- **GitHub Actions** auto-builds on every push
+- **Emscripten SDK** cached for fast CI builds
+- **GitHub Pages** serves static site
+- **Service Worker** caches 18MB for offline use
 
 ## Documentation
 
-- **BUILD_INSTRUCTIONS.md** - Detailed build instructions
-- **README_WASM.md** - WASM build documentation
-- **NATIVE_VS_WASM.md** - Comparison of build modes
-- **RELEASE_PACKAGING.md** - Release packaging guide
-- **EMSCRIPTEN_WRAPPER.md** - Technical details on Emscripten wrapper
-- **CHANGES.md** - Recent changes and improvements
+- **PLAN.md** - Complete migration plan (Flask → WASM PWA)
+- **Individual game directories** - Game-specific READMEs
 
 ## Troubleshooting
 
-### WASM Build Issues
+### Build Issues
 
 **"Emscripten SDK not found"**
-- Run `make wasm-deps` to install Emscripten
-- The build system handles activation automatically
+```bash
+make wasm-deps  # Installs Emscripten (~500MB, 10-15 min)
+```
 
 **"Game files not found"**
-- Ensure git submodules are initialized: `git submodule update --init`
+```bash
+git submodule update --init --recursive
+```
 
-### Native Build Issues
+**Native build: "libgc not found"**
+```bash
+# macOS
+brew install bdw-gc
 
-**"libgc not found"**
-- macOS: `brew install bdw-gc` (or let Makefile do it)
-- Linux: `sudo apt-get install libgc-dev`
+# Linux
+sudo apt-get install libgc-dev
+```
 
-**Python errors**
-- Ensure Python 3 is installed: `python3 --version`
-- Run `make deps` to install Python dependencies
+### Runtime Issues
+
+**PWA won't install**
+- Must be served over HTTPS (GitHub Pages) or localhost
+- Check browser console for manifest errors
+
+**Service Worker not registering**
+- Clear site data and reload
+- Check browser supports Service Workers
+
+**Save/Load not working**
+- IndexedDB must be enabled in browser
+- Check browser storage settings
 
 ## Make Targets Reference
 
