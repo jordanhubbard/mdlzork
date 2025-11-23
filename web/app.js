@@ -32,12 +32,12 @@ class ZorkGame {
                 saveFile: 'MDL/MADADV.SAVE'
             },
             'zork-780124': {
-                name: 'Zork 1978-01-24 (with end-game)',
+                name: 'Zork 1978-01-24 ⚠️ INCOMPLETE END-GAME',
                 path: '/games/zork-780124',
                 saveFile: 'MDL/MADADV.SAVE'
             },
             'zork-771212': {
-                name: 'Zork 1977-12-12 (500 points)',
+                name: 'Zork 1977-12-12 (500 points, no end-game)',
                 path: '/games/zork-771212',
                 saveFile: 'MDL/MADADV.SAVE'
             }
