@@ -1,0 +1,91 @@
+name: Build and Deploy WASM to GitHub Pages
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Cache Emscripten SDK
+        uses: actions/cache@v3
+        with:
+          path: emsdk
+          key: ${{ runner.os }}-emsdk-${{ hashFiles('emsdk/.emscripten_version') }}
+          restore-keys: |
+            ${{ runner.os }}-emsdk-
+      
+      - name: Setup Emscripten
+        run: |
+          if [ ! -d "emsdk" ]; then
+            git clone https://github.com/emscripten-core/emsdk.git
+          fi
+          cd emsdk
+          ./emsdk install latest
+          ./emsdk activate latest
+      
+      - name: Build WASM
+        run: |
+          source emsdk/emsdk_env.sh
+          cd confusion-mdl
+          make -f Makefile.wasm clean-wasm
+          make -f Makefile.wasm
+      
+      - name: Prepare deployment directory
+        run: |
+          mkdir -p deploy
+          # Copy web files
+          cp -r web/* deploy/
+          # Copy WASM artifacts
+          cp confusion-mdl/mdli.js deploy/
+          cp confusion-mdl/mdli.wasm deploy/
+          cp confusion-mdl/mdli.data deploy/
+          # Fix paths in HTML (remove ../ prefix for WASM files)
+          sed -i 's|../confusion-mdl/mdli.js|mdli.js|g' deploy/index.html
+          sed -i 's|../confusion-mdl/mdli.js|mdli.js|g' deploy/test-simple.html 2>/dev/null || true
+          # Create .nojekyll to prevent GitHub Pages from processing
+          touch deploy/.nojekyll
+          # Create README for gh-pages branch
+          echo "# MDL Zork - GitHub Pages Deployment" > deploy/README.md
+          echo "" >> deploy/README.md
+          echo "This branch contains the built and deployed version of MDL Zork." >> deploy/README.md
+          echo "Visit: https://$(echo $GITHUB_REPOSITORY | cut -d'/' -f1).github.io/$(echo $GITHUB_REPOSITORY | cut -d'/' -f2)/" >> deploy/README.md
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: ./deploy
+
+  deploy:
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
