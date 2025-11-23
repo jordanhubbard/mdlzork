@@ -350,10 +350,28 @@ class ZorkGame {
                     const versions = gameDirs.filter(f => f !== '.' && f !== '..');
                     if (versions.length > 0) {
                         this.terminal.writeln('\x1b[90mAvailable game versions: ' + versions.join(', ') + '\x1b[0m');
+                        
+                        // Debug: Check if original_source is loaded
+                        try {
+                            const zork810722 = this.module.FS.readdir('/games/zork-810722');
+                            this.terminal.writeln('\x1b[90m[Debug] zork-810722 contents: ' + zork810722.filter(f => f !== '.' && f !== '..').slice(0, 10).join(', ') + '\x1b[0m');
+                            
+                            // Check for original_source subdirectory
+                            if (zork810722.includes('original_source')) {
+                                const origSrc = this.module.FS.readdir('/games/zork-810722/original_source');
+                                this.terminal.writeln('\x1b[90m[Debug] original_source has ' + (origSrc.length - 2) + ' files\x1b[0m');
+                            } else {
+                                this.terminal.writeln('\x1b[33m[Debug] original_source directory NOT found\x1b[0m');
+                            }
+                        } catch(e) {
+                            this.terminal.writeln('\x1b[33m[Debug] Error checking directories: ' + e.message + '\x1b[0m');
+                        }
+                        
                         this.terminal.writeln('');
                     }
                 } catch(e) {
                     console.error('Error reading games directory:', e);
+                    this.terminal.writeln('\x1b[33m[Warning] Could not read /games directory: ' + e.message + '\x1b[0m');
                 }
             }
             
