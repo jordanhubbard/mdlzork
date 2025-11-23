@@ -195,21 +195,6 @@ $(EMSDK_ACTIVATE): $(EMSDK_DIR)
 	cd $(EMSDK_DIR) && ./emsdk activate latest
 	@echo "✅ Emscripten SDK installed and activated"
 
-
-
-# Build WASM version (not yet implemented)
-wasm-build:
-	@echo "⚠️  WASM build not implemented yet"
-	@echo ""
-	@echo "To implement WASM support, you need to:"
-	@echo "  1. Create confusion-mdl/Makefile.wasm with Emscripten build rules"
-	@echo "  2. Create confusion-mdl/gc_stub.h to replace Boehm GC"
-	@echo "  3. Configure Emscripten flags for browser compatibility"
-	@echo ""
-	@echo "The wrapper script (scripts/with-emsdk.sh) is ready to use when you create Makefile.wasm"
-	@echo ""
-	@exit 1
-
 # Serve WASM build for testing
 wasm-serve: wasm-build
 	@echo ""
