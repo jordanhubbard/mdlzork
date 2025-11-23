@@ -1,4 +1,4 @@
-name: Build and Deploy WASM to GitHub Pages
+name: CI
 
 on:
   push:
@@ -19,15 +19,51 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    
+  native-build:
+    name: Native Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+      fail-fast: false
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: true
-      
+          submodules: recursive
+
+      - name: Install build dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+
+      - name: Install build dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # macOS comes with clang by default
+          echo "Using system clang"
+
+      - name: Build native interpreter
+        run: make build-native
+
+      - name: Verify native interpreter
+        run: |
+          test -f confusion-mdl/mdli || exit 1
+          echo "✓ Native interpreter built successfully"
+          ./confusion-mdl/mdli --version 2>&1 || echo "✓ Binary exists and runs"
+
+  wasm-build:
+    name: WASM Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
       - name: Cache Emscripten SDK
         uses: actions/cache@v3
         with:
@@ -35,7 +71,7 @@ jobs:
           key: ${{ runner.os }}-emsdk-${{ hashFiles('emsdk/.emscripten_version') }}
           restore-keys: |
             ${{ runner.os }}-emsdk-
-      
+
       - name: Setup Emscripten
         run: |
           if [ ! -d "emsdk" ]; then
@@ -44,14 +80,28 @@ jobs:
           cd emsdk
           ./emsdk install latest
           ./emsdk activate latest
-      
+
       - name: Build WASM
         run: |
           source emsdk/emsdk_env.sh
           cd confusion-mdl
           make -f Makefile.wasm clean-wasm
           make -f Makefile.wasm
-      
+
+      - name: Verify WASM artifacts
+        run: |
+          echo "Checking for required build artifacts..."
+          test -f confusion-mdl/mdli.js && echo "✓ mdli.js exists" || exit 1
+          test -f confusion-mdl/mdli.wasm && echo "✓ mdli.wasm exists" || exit 1
+          test -f confusion-mdl/mdli.data && echo "✓ mdli.data exists" || exit 1
+          
+          echo ""
+          echo "File sizes:"
+          ls -lh confusion-mdl/mdli.js confusion-mdl/mdli.wasm confusion-mdl/mdli.data
+          
+          echo ""
+          echo "✓ WASM build successful!"
+
       - name: Prepare deployment directory
         run: |
           mkdir -p deploy
@@ -71,20 +121,21 @@ jobs:
           echo "" >> deploy/README.md
           echo "This branch contains the built and deployed version of MDL Zork." >> deploy/README.md
           echo "Visit: https://$(echo $GITHUB_REPOSITORY | cut -d'/' -f1).github.io/$(echo $GITHUB_REPOSITORY | cut -d'/' -f2)/" >> deploy/README.md
-      
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./deploy
 
   deploy:
+    name: Deploy to GitHub Pages
     if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
-    needs: build
+    needs: [native-build, wasm-build]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    
+
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
