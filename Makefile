@@ -151,10 +151,18 @@ $(CONFUSION_INTERPRETER):
 # Run the web server (legacy - use run-native for explicit native server)
 # Note: 'run' now defaults to WASM version - use 'run-native' for server version
 
-# Clean build artifacts
+# Clean build artifacts and temporary files
 clean:
+	@echo "Cleaning build artifacts..."
 	find . -type f -name ".DS_Store" -not -path "./emsdk/*" -delete 2>/dev/null || true
 	find . -type f -name "*.log" -not -path "./emsdk/*" -delete 2>/dev/null || true
+	find . -type f -name "*.backup" -not -path "./emsdk/*" -delete 2>/dev/null || true
+	find . -type f -name "*.bak" -not -path "./emsdk/*" -delete 2>/dev/null || true
+	find . -type f -name "*.wasm.o" -not -path "./emsdk/*" -delete 2>/dev/null || true
+	find web -type f -name "*.cpp" -delete 2>/dev/null || true
+	find web -type f -name "*.o" -delete 2>/dev/null || true
+	$(MAKE) -C $(CONFUSION_DIR) -f Makefile.wasm clean-wasm 2>/dev/null || true
+	@echo "✅ Clean complete"
 
 # Clean everything including compiled interpreter
 clean-all: clean clean-wasm
