@@ -135,9 +135,26 @@ interpreter: $(CONFUSION_INTERPRETER)
 
 $(CONFUSION_INTERPRETER):
 	@echo "Building MDL interpreter..."
-	@if [ ! -f /opt/homebrew/lib/libgc.dylib ]; then \
-		echo "Installing Boehm GC via Homebrew..."; \
-		brew install bdw-gc; \
+	@# Detect OS and install Boehm GC if needed
+	@if [ "$$(uname)" = "Darwin" ]; then \
+		if [ ! -f /opt/homebrew/lib/libgc.dylib ] && [ ! -f /usr/local/lib/libgc.dylib ]; then \
+			echo "Installing Boehm GC via Homebrew..."; \
+			brew install bdw-gc; \
+		fi; \
+	elif [ "$$(uname)" = "Linux" ]; then \
+		if ! pkg-config --exists bdw-gc 2>/dev/null; then \
+			echo "Installing Boehm GC..."; \
+			if command -v apt-get >/dev/null 2>&1; then \
+				echo "Detected Debian/Ubuntu - use: sudo apt-get install libgc-dev"; \
+			elif command -v yum >/dev/null 2>&1; then \
+				echo "Detected RedHat/CentOS - use: sudo yum install gc-devel"; \
+			elif command -v dnf >/dev/null 2>&1; then \
+				echo "Detected Fedora - use: sudo dnf install gc-devel"; \
+			else \
+				echo "Please install Boehm GC (bdw-gc) for your distribution"; \
+			fi; \
+			exit 1; \
+		fi; \
 	fi
 	@# Patch Makefile to use pkg-config for GC
 	@if ! grep -q "pkg-config" $(CONFUSION_DIR)/Makefile; then \

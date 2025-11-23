@@ -2,7 +2,7 @@
 
 Play the original mainframe Zork games written in MDL (MIT Design Language) from 1977-1981, compiled to WebAssembly and running entirely in your browser as a Progressive Web App.
 
-🎮 **Play Online**: https://jordanhubbard.github.io/mdlzork/ _(auto-deployed from master)_
+🎮 **Play Online**: https://jordanhubbard.github.io/mdlzork/web/ _(auto-deployed from master)_
 
 ## ✨ Features
 
@@ -18,7 +18,7 @@ Play the original mainframe Zork games written in MDL (MIT Design Language) from
 
 ### Play Online (Easiest)
 
-Visit **https://jordanhubbard.github.io/mdlzork/** to play immediately - no installation required!
+Visit **https://jordanhubbard.github.io/mdlzork/web/** to play immediately - no installation required!
 
 ### Build and Run Locally
 
