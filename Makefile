@@ -24,16 +24,21 @@ all: interpreter deps
 # High-Level Targets (Recommended)
 # ============================================================================
 
-# Build browser-ready WASM application (default)
-build: build-native
+# Build browser-ready WASM application
+build: wasm-build
 	@echo ""
-	@echo "⚠️  Note: WASM build not yet implemented"
-	@echo "✅ Native interpreter built instead"
+	@echo "✅ WASM build complete!"
 	@echo ""
-	@echo "To run: make run-native"
+	@echo "Files generated:"
+	@echo "  - $(CONFUSION_DIR)/mdli.js"
+	@echo "  - $(CONFUSION_DIR)/mdli.wasm"  
+	@echo "  - $(CONFUSION_DIR)/mdli.data"
+	@echo ""
+	@echo "To test: make serve-wasm"
+	@echo "Then open: http://localhost:8000/index.html"
 
-# Run application (defaults to native server for now)
-run: run-native-server
+# Run application (defaults to WASM in browser)
+run: wasm-serve
 
 # Build native interpreter (CLI or server use)
 build-native: interpreter
@@ -113,19 +118,13 @@ run-native-server: interpreter deps
 	$(PYTHON) zork_launcher.py
 
 # WASM build target - builds browser-ready application
-wasm-all:
-	@echo ""
-	@echo "⚠️  WASM build not yet implemented"
-	@echo ""
-	@echo "The WASM build infrastructure (Makefile.wasm, gc_stub.h, etc.)"
-	@echo "needs to be created in the confusion-mdl directory."
-	@echo ""
-	@echo "For now, use native builds:"
-	@echo "  make build-native       # Build native interpreter"
-	@echo "  make run-native         # Run CLI version"
-	@echo "  make run-native-server  # Run web server version"
-	@echo ""
-	@exit 1
+wasm-build: wasm-deps
+	@echo "Building WASM version with Emscripten..."
+	cd $(CONFUSION_DIR) && . ../$(EMSDK_ACTIVATE) && $(MAKE) -f Makefile.wasm
+	@echo "✅ WASM build complete"
+
+# Alias for wasm-build
+wasm-all: wasm-build
 
 # Set up Python virtual environment
 $(VENV)/bin/activate:
@@ -212,13 +211,19 @@ wasm-build:
 	@exit 1
 
 # Serve WASM build for testing
-wasm-serve:
-	@echo "⚠️  WASM build not implemented yet"
+wasm-serve: wasm-build
 	@echo ""
-	@echo "Use native server instead:"
-	@echo "  make run-native-server"
+	@echo "Starting web server for WASM build..."
+	@echo "  📡 Server: http://localhost:8000"
+	@echo "  📄 Main UI: http://localhost:8000/index.html"
+	@echo "  🧪 Test page: http://localhost:8000/test-simple.html"
 	@echo ""
-	@exit 1
+	@echo "Press Ctrl+C to stop server"
+	@echo ""
+	cd web && python3 -m http.server 8000
+
+# Alias
+serve-wasm: wasm-serve
 
 # Clean WASM build artifacts
 clean-wasm:
