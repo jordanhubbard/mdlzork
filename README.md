@@ -108,7 +108,7 @@ make clean-native        # Clean native artifacts
 
 ### In Browser (Recommended)
 
-1. Visit https://jordanhubbard.github.io/mdlzork/ OR
+1. Visit https://jordanhubbard.github.io/mdlzork/web/ OR
 2. Run locally: `make run` → open http://localhost:8000/
 3. Select game version (1977-1981)
 4. Click "Start Game"
