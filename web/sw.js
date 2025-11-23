@@ -8,23 +8,24 @@ const RUNTIME_CACHE = 'mdlzork-runtime';
 
 // Assets to cache on install
 const PRECACHE_ASSETS = [
-    '/',
-    '/index.html',
-    '/style.css',
-    '/app.js',
-    '/manifest.json',
-    '/offline.html',
+    '/web/',
+    '/web/index.html',
+    '/web/style.css',
+    '/web/app.js',
+    '/web/manifest.json',
+    '/web/icon.svg',
     // xterm.js from CDN
     'https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js',
     'https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css',
     'https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js'
 ];
 
-// WASM files (large, cached separately)
+// WASM files (large, cached separately - skip for now as they're huge)
 const WASM_ASSETS = [
-    '../confusion-mdl/mdli.js',
-    '../confusion-mdl/mdli.wasm',
-    '../confusion-mdl/mdli.data'
+    // Don't pre-cache these - they're 16MB+
+    // '/web/mdli.js',
+    // '/web/mdli.wasm',
+    // '/web/mdli.data'
 ];
 
 // Install event - cache assets

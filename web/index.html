@@ -57,14 +57,14 @@
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
     
     <!-- Load WASM module and game interface -->
-    <script src="../confusion-mdl/mdli.js"></script>
-    <script src="app.js"></script>
+    <script src="mdli.js?v=11"></script>
+    <script src="app.js?v=11"></script>
     
     <!-- Register Service Worker -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
+                navigator.serviceWorker.register('sw.js')
                     .then((registration) => {
                         console.log('ServiceWorker registered:', registration.scope);
                         

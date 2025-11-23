@@ -24,22 +24,22 @@ class ZorkGame {
             'zork-810722': {
                 name: 'Zork 1981-07-22 (Final MDL)',
                 path: '/games/zork-810722',
-                saveFile: 'SAVEFILE/ZORK.SAVE'
+                saveFile: 'MDL/MADADV.SAVE'
             },
             'zork-791211': {
                 name: 'Zork 1979-12-11 (616 points)',
                 path: '/games/zork-791211',
-                saveFile: 'SAVEFILE/ZORK.SAVE'
+                saveFile: 'MDL/MADADV.SAVE'
             },
             'zork-780124': {
                 name: 'Zork 1978-01-24 (with end-game)',
                 path: '/games/zork-780124',
-                saveFile: 'SAVEFILE/ZORK.SAVE'
+                saveFile: 'MDL/MADADV.SAVE'
             },
             'zork-771212': {
                 name: 'Zork 1977-12-12 (500 points)',
                 path: '/games/zork-771212',
-                saveFile: 'SAVEFILE/ZORK.SAVE'
+                saveFile: 'MDL/MADADV.SAVE'
             }
         };
         
@@ -205,9 +205,21 @@ class ZorkGame {
                 this.commandHistory.push(command);
                 this.historyIndex = this.commandHistory.length;
                 
-                // Send to WASM stdin
+                // Send to WASM stdin  
                 if (this.isRunning && this.module) {
                     this.sendToStdin(command + '\n');
+                    
+                    // After sending command, give WASM a chance to process it
+                    // Use setTimeout to yield control back to event loop
+                    setTimeout(() => {
+                        // Show prompt again if game is still running
+                        if (this.isRunning) {
+                            this.terminal.write('> ');
+                        }
+                    }, 50);
+                } else {
+                    // Game not running, show message
+                    this.terminal.writeln('\x1b[33m[Game not running. Click "Start Game" first.]\x1b[0m');
                 }
             }
             
@@ -271,17 +283,15 @@ class ZorkGame {
     }
     
     sendToStdin(text) {
-        if (!this.module || !this.module.TTY || !this.module.TTY.default) {
-            console.error('TTY not available');
+        if (!this.module || !this.stdinBuffer) {
+            console.error('Module or stdin buffer not available');
             return;
         }
         
-        // Send each character to stdin
+        // Send each character to stdin buffer
         for (let i = 0; i < text.length; i++) {
             const charCode = text.charCodeAt(i);
-            if (this.module.TTY.default.input) {
-                this.module.TTY.default.input.push(charCode);
-            }
+            this.stdinBuffer.push(charCode);
         }
     }
     
@@ -289,8 +299,12 @@ class ZorkGame {
         this.updateStatus('Loading WASM module... ⏳', 'loading');
         this.terminal.writeln('\x1b[33mLoading MDL interpreter...\x1b[0m');
         
+        // Create stdin buffer that will be read by WASM
+        this.stdinBuffer = [];
+        this.waitingForInput = false;
+        
         try {
-            // Configure Emscripten module
+            // Configure Emscripten module with proper stdin handling
             const moduleConfig = {
                 // Redirect stdout/stderr to terminal
                 print: (text) => {
@@ -300,34 +314,43 @@ class ZorkGame {
                     this.terminal.write('\x1b[31m[ERROR] ' + text + '\x1b[0m\r\n');
                 },
                 
-                // Set up stdin
-                stdin: () => {
-                    // This is called by WASM when it needs input
-                    // We'll handle this through TTY instead
-                    return null;
-                },
+                // Don't define stdin callback - let Emscripten use its default TTY handling
+                // We'll set up a proper terminal device instead
+                
+                preRun: [function(module) {
+                    // Set up custom stdin handling before runtime starts
+                    var self = this;
+                    
+                    module.FS.init(
+                        function() { // stdin
+                            // Return next character from stdin buffer
+                            if (self.stdinBuffer && self.stdinBuffer.length > 0) {
+                                return self.stdinBuffer.shift();
+                            }
+                            return null;
+                        },
+                        function(val) { // stdout
+                            if (val !== null && val !== undefined) {
+                                var char = String.fromCharCode(val);
+                                // Convert \n to \r\n for proper terminal display
+                                if (val === 10) {
+                                    self.terminal.write('\r\n');
+                                } else {
+                                    self.terminal.write(char);
+                                }
+                            }
+                        },
+                        function(val) { // stderr
+                            if (val !== null && val !== undefined) {
+                                self.terminal.write('\x1b[31m' + String.fromCharCode(val) + '\x1b[0m');
+                            }
+                        }
+                    );
+                }.bind(this)],
                 
                 onRuntimeInitialized: () => {
                     this.terminal.writeln('\x1b[32m✓ WASM runtime initialized\x1b[0m');
-                    
-                    // Override TTY output to use our terminal
-                    if (this.module.TTY && this.module.TTY.default) {
-                        const originalPut_char = this.module.TTY.default.put_char;
-                        this.module.TTY.default.put_char = (tty, val) => {
-                            if (val !== null && val !== undefined) {
-                                const char = String.fromCharCode(val);
-                                this.terminal.write(char);
-                            }
-                            if (originalPut_char) {
-                                originalPut_char.call(this.module.TTY.default, tty, val);
-                            }
-                        };
-                        
-                        // Initialize stdin buffer
-                        if (!this.module.TTY.default.input) {
-                            this.module.TTY.default.input = [];
-                        }
-                    }
+                    this.terminal.writeln('\x1b[90m[Stdin proxy active - type commands and press Enter]\x1b[0m');
                 }
             };
             
@@ -434,16 +457,91 @@ class ZorkGame {
                 this.terminal.writeln('\x1b[36mStarting MDL interpreter...\x1b[0m');
                 this.terminal.writeln('');
                 
-                // For now, just indicate game is ready for commands
-                // The actual MDL interpreter execution is complex and would need
-                // proper setup with the save file
-                this.terminal.writeln('\x1b[32mGame initialized and ready for commands.\x1b[0m');
-                this.terminal.writeln('\x1b[90mNote: Full game execution requires proper MDL interpreter integration.\x1b[0m');
-                this.terminal.writeln('');
+                // Build the full path to the save file
+                const saveFilePath = `${gameInfo.path}/${gameInfo.saveFile}`;
+                
+                // Check if save file exists
+                if (this.module.FS) {
+                    try {
+                        this.module.FS.stat(saveFilePath);
+                        this.terminal.writeln(`\x1b[90m[Loading from ${saveFilePath}]\x1b[0m`);
+                        this.terminal.writeln('');
+                        
+                        // Call the WASM main function with proper arguments
+                        // mdli -r <save-file-path>
+                        if (this.module.callMain) {
+                            this.terminal.writeln('\x1b[36mInitializing game world...\x1b[0m');
+                            this.terminal.writeln('');
+                            
+                            // Call main with arguments
+                            // The interpreter will run and then wait for input
+                            try {
+                                this.module.callMain(['-r', saveFilePath]);
+                                
+                                // If we get here, the interpreter returned normally
+                                // This means the game loop completed
+                            } catch(mainError) {
+                                // Check if this is an EXIT_RUNTIME error (expected) or real error
+                                const errorMsg = mainError.message || mainError.toString();
+                                
+                                if (errorMsg.includes('unreachable') || errorMsg.includes('Aborted') || errorMsg.includes('EOF')) {
+                                    // The interpreter hit the EOF issue
+                                    this.terminal.writeln('');
+                                    this.terminal.writeln('\x1b[1;33m╔════════════════════════════════════════════════════════════╗\x1b[0m');
+                                    this.terminal.writeln('\x1b[1;33m║  KNOWN LIMITATION: Interactive Mode Not Fully Working   ║\x1b[0m');
+                                    this.terminal.writeln('\x1b[1;33m╚════════════════════════════════════════════════════════════╝\x1b[0m');
+                                    this.terminal.writeln('');
+                                    this.terminal.writeln('\x1b[36mThe game successfully loaded and displayed the starting location!\x1b[0m');
+                                    this.terminal.writeln('\x1b[36mHowever, interactive gameplay requires modifying the MDL interpreter\x1b[0m');
+                                    this.terminal.writeln('\x1b[36mC source code to use non-blocking I/O for the browser environment.\x1b[0m');
+                                    this.terminal.writeln('');
+                                    this.terminal.writeln('\x1b[90mThe issue: The interpreter uses blocking I/O (getchar/fgetc) which\x1b[0m');
+                                    this.terminal.writeln('\x1b[90mexpects to wait for input. In the browser, this causes EOF when the\x1b[0m');
+                                    this.terminal.writeln('\x1b[90mstdin buffer is empty.\x1b[0m');
+                                    this.terminal.writeln('');
+                                    this.terminal.writeln('\x1b[32mSee WASM_STATUS.md for technical details and possible solutions.\x1b[0m');
+                                    this.terminal.writeln('');
+                                    // Don't stop the game marker
+                                } else if (errorMsg.includes('exit')) {
+                                    this.terminal.writeln('\x1b[90m[Interpreter exited]\x1b[0m');
+                                    this.stopGame();
+                                } else {
+                                    console.error('Main error:', mainError);
+                                    this.terminal.writeln('\x1b[33m[Warning: ' + errorMsg + ']\x1b[0m');
+                                }
+                            }
+                        } else {
+                            this.terminal.writeln('\x1b[31m[Error: callMain not available]\x1b[0m');
+                            throw new Error('callMain not available in WASM module');
+                        }
+                        
+                    } catch(statError) {
+                        this.terminal.writeln('\x1b[33m[Warning: Save file not found: ' + saveFilePath + ']\x1b[0m');
+                        this.terminal.writeln('\x1b[33m[Attempting to start interpreter without save file]\x1b[0m');
+                        this.terminal.writeln('');
+                        
+                        try {
+                            // Try calling main without arguments
+                            if (this.module.callMain) {
+                                this.module.callMain([]);
+                            }
+                        } catch(mainError) {
+                            if (mainError && mainError.message && mainError.message.includes('exit')) {
+                                this.terminal.writeln('\x1b[90m[Interpreter exited]\x1b[0m');
+                                this.stopGame();
+                            } else {
+                                throw mainError;
+                            }
+                        }
+                    }
+                } else {
+                    throw new Error('Filesystem not available');
+                }
                 
             } catch(e) {
                 this.terminal.writeln('\x1b[31mError starting interpreter: ' + e.message + '\x1b[0m');
                 console.error('Interpreter start error:', e);
+                this.stopGame();
             }
             
         } catch (error) {

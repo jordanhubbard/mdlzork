@@ -123,6 +123,8 @@ run-native-server:
 wasm-build: wasm-deps
 	@echo "Building WASM version with Emscripten..."
 	cd $(CONFUSION_DIR) && . ../$(EMSDK_ACTIVATE) && $(MAKE) -f Makefile.wasm
+	@echo "Copying WASM files to web directory..."
+	@cp $(CONFUSION_DIR)/mdli.js $(CONFUSION_DIR)/mdli.wasm $(CONFUSION_DIR)/mdli.data web/
 	@echo "✅ WASM build complete"
 
 # Alias for wasm-build
