@@ -333,9 +333,9 @@ check-emscripten:
 	@echo "✅ Emscripten found: $$(emcc --version | head -1)"
 
 # Build WASM version
-wasm-build: check-submodules check-emscripten
+wasm-build: check-submodules wasm-deps
 	@echo "Building WASM interpreter..."
-	@echo "Source Emscripten environment..."
+	@echo "Sourcing Emscripten environment..."
 	@GAME_DIRS=""; \
 	for game in mdlzork_771212 mdlzork_780124 mdlzork_791211 mdlzork_810722; do \
 		if [ -d "$$game" ]; then \
