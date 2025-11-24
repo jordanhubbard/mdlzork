@@ -1,5 +1,5 @@
 # Top-level Makefile for MDL Zork Web Launcher
-.PHONY: all clean clean-all venv deps interpreter run build run-native build-native run-native-server wasm-deps wasm-build wasm-serve wasm-all package package-native package-wasm clean-releases help check-submodules check-deps mdlzork_771212 mdlzork_780124 mdlzork_791211 mdlzork_810722
+.PHONY: all clean clean-all venv deps interpreter run build run-native build-native run-native-server wasm-deps wasm-build wasm-serve wasm-all package package-native package-wasm clean-releases help check-submodules check-deps install-deps mdlzork_771212 mdlzork_780124 mdlzork_791211 mdlzork_810722
 
 # Local test server port
 SERVER_PORT := 8000
@@ -32,26 +32,37 @@ check-deps:
 		echo "❌ make not found"; \
 		MISSING_DEPS=1; \
 	fi; \
+	GC_FOUND=0; \
 	if command -v pkg-config >/dev/null 2>&1; then \
-		if ! pkg-config --exists bdw-gc 2>/dev/null; then \
-			echo "❌ Boehm GC library (bdw-gc) not found via pkg-config"; \
-			MISSING_DEPS=1; \
+		if pkg-config --exists bdw-gc 2>/dev/null; then \
+			GC_FOUND=1; \
 		fi; \
-	else \
+	fi; \
+	if [ $$GC_FOUND -eq 0 ]; then \
 		if [ "$$(uname)" = "Darwin" ]; then \
-			if [ ! -f /opt/homebrew/lib/libgc.dylib ] && [ ! -f /usr/local/lib/libgc.dylib ]; then \
-				echo "❌ Boehm GC library (bdw-gc) not found"; \
-				MISSING_DEPS=1; \
+			if [ -f /opt/homebrew/lib/libgc.dylib ] || [ -f /usr/local/lib/libgc.dylib ]; then \
+				GC_FOUND=1; \
 			fi; \
-		else \
-			echo "⚠️  pkg-config not found, cannot verify bdw-gc installation"; \
+		elif [ "$$(uname)" = "Linux" ]; then \
+			if [ -f /usr/include/gc/gc.h ] || [ -f /usr/local/include/gc/gc.h ]; then \
+				GC_FOUND=1; \
+			fi; \
 		fi; \
+	fi; \
+	if [ $$GC_FOUND -eq 0 ]; then \
+		echo "❌ Boehm GC library (bdw-gc) not found"; \
+		MISSING_DEPS=1; \
 	fi; \
 	if [ $$MISSING_DEPS -eq 1 ]; then \
 		echo ""; \
 		echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; \
-		echo "Missing dependencies detected. Please install:"; \
+		echo "Missing dependencies detected!"; \
 		echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; \
+		echo ""; \
+		echo "Quick install:"; \
+		echo "  make install-deps"; \
+		echo ""; \
+		echo "Or install manually:"; \
 		echo ""; \
 		if [ "$$(uname)" = "Darwin" ]; then \
 			echo "macOS (Homebrew):"; \
@@ -84,6 +95,50 @@ check-deps:
 		exit 1; \
 	fi
 	@echo "✅ All build dependencies found"
+
+# Install required dependencies for the current platform
+install-deps:
+	@echo "Installing build dependencies..."
+	@if [ "$$(uname)" = "Darwin" ]; then \
+		echo "macOS detected - using Homebrew"; \
+		if ! command -v brew >/dev/null 2>&1; then \
+			echo "❌ Homebrew not found. Please install from https://brew.sh"; \
+			exit 1; \
+		fi; \
+		echo "Installing bdw-gc..."; \
+		brew install bdw-gc; \
+		echo "✅ Dependencies installed successfully"; \
+	elif [ "$$(uname)" = "Linux" ]; then \
+		if command -v apt-get >/dev/null 2>&1; then \
+			echo "Debian/Ubuntu detected - using apt-get"; \
+			echo "Installing build-essential and libgc-dev..."; \
+			sudo apt-get update && sudo apt-get install -y build-essential libgc-dev pkg-config; \
+			echo "✅ Dependencies installed successfully"; \
+		elif command -v yum >/dev/null 2>&1; then \
+			echo "RedHat/CentOS detected - using yum"; \
+			echo "Installing Development Tools and gc-devel..."; \
+			sudo yum groupinstall -y 'Development Tools' && sudo yum install -y gc-devel; \
+			echo "✅ Dependencies installed successfully"; \
+		elif command -v dnf >/dev/null 2>&1; then \
+			echo "Fedora detected - using dnf"; \
+			echo "Installing Development Tools and gc-devel..."; \
+			sudo dnf groupinstall -y 'Development Tools' && sudo dnf install -y gc-devel; \
+			echo "✅ Dependencies installed successfully"; \
+		elif command -v pacman >/dev/null 2>&1; then \
+			echo "Arch Linux detected - using pacman"; \
+			echo "Installing base-devel and gc..."; \
+			sudo pacman -S --noconfirm base-devel gc; \
+			echo "✅ Dependencies installed successfully"; \
+		else \
+			echo "❌ Unknown Linux distribution"; \
+			echo "Please manually install: gcc, make, and bdw-gc (Boehm GC)"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "❌ Unsupported operating system: $$(uname)"; \
+		echo "Please manually install: gcc/clang, make, and bdw-gc (Boehm GC)"; \
+		exit 1; \
+	fi
 
 # WASM paths
 EMSDK_DIR := emsdk
