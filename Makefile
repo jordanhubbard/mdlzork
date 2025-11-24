@@ -1,5 +1,5 @@
 # Top-level Makefile for MDL Zork Web Launcher
-.PHONY: all clean clean-all venv deps interpreter run build run-native build-native run-native-server wasm-deps wasm-build wasm-serve wasm-all package package-native package-wasm clean-releases help check-submodules mdlzork_771212 mdlzork_780124 mdlzork_791211 mdlzork_810722
+.PHONY: all clean clean-all venv deps interpreter run build run-native build-native run-native-server wasm-deps wasm-build wasm-serve wasm-all package package-native package-wasm clean-releases help check-submodules check-deps mdlzork_771212 mdlzork_780124 mdlzork_791211 mdlzork_810722
 
 # Local test server port
 SERVER_PORT := 8000
@@ -19,6 +19,71 @@ check-submodules:
 		git submodule update --init --recursive; \
 		echo "✅ Submodules initialized"; \
 	fi
+
+# Check if required dependencies are installed
+check-deps:
+	@echo "Checking build dependencies..."
+	@MISSING_DEPS=0; \
+	if ! command -v gcc >/dev/null 2>&1 && ! command -v clang >/dev/null 2>&1; then \
+		echo "❌ C compiler not found (gcc or clang required)"; \
+		MISSING_DEPS=1; \
+	fi; \
+	if ! command -v make >/dev/null 2>&1; then \
+		echo "❌ make not found"; \
+		MISSING_DEPS=1; \
+	fi; \
+	if command -v pkg-config >/dev/null 2>&1; then \
+		if ! pkg-config --exists bdw-gc 2>/dev/null; then \
+			echo "❌ Boehm GC library (bdw-gc) not found via pkg-config"; \
+			MISSING_DEPS=1; \
+		fi; \
+	else \
+		if [ "$$(uname)" = "Darwin" ]; then \
+			if [ ! -f /opt/homebrew/lib/libgc.dylib ] && [ ! -f /usr/local/lib/libgc.dylib ]; then \
+				echo "❌ Boehm GC library (bdw-gc) not found"; \
+				MISSING_DEPS=1; \
+			fi; \
+		else \
+			echo "⚠️  pkg-config not found, cannot verify bdw-gc installation"; \
+		fi; \
+	fi; \
+	if [ $$MISSING_DEPS -eq 1 ]; then \
+		echo ""; \
+		echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; \
+		echo "Missing dependencies detected. Please install:"; \
+		echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; \
+		echo ""; \
+		if [ "$$(uname)" = "Darwin" ]; then \
+			echo "macOS (Homebrew):"; \
+			echo "  brew install bdw-gc"; \
+		elif [ "$$(uname)" = "Linux" ]; then \
+			if command -v apt-get >/dev/null 2>&1; then \
+				echo "Debian/Ubuntu:"; \
+				echo "  sudo apt-get update"; \
+				echo "  sudo apt-get install build-essential libgc-dev"; \
+			elif command -v yum >/dev/null 2>&1; then \
+				echo "RedHat/CentOS:"; \
+				echo "  sudo yum groupinstall 'Development Tools'"; \
+				echo "  sudo yum install gc-devel"; \
+			elif command -v dnf >/dev/null 2>&1; then \
+				echo "Fedora:"; \
+				echo "  sudo dnf groupinstall 'Development Tools'"; \
+				echo "  sudo dnf install gc-devel"; \
+			elif command -v pacman >/dev/null 2>&1; then \
+				echo "Arch Linux:"; \
+				echo "  sudo pacman -S base-devel gc"; \
+			else \
+				echo "Linux:"; \
+				echo "  Install build-essential/gcc, make, and bdw-gc (Boehm GC) for your distribution"; \
+			fi; \
+		else \
+			echo "Please install: gcc/clang, make, and bdw-gc (Boehm GC)"; \
+		fi; \
+		echo ""; \
+		echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; \
+		exit 1; \
+	fi
+	@echo "✅ All build dependencies found"
 
 # WASM paths
 EMSDK_DIR := emsdk
@@ -134,32 +199,11 @@ run-native-server:
 	@exit 1
 
 # Build the MDL interpreter
-interpreter: check-submodules $(CONFUSION_INTERPRETER)
+interpreter: check-submodules check-deps $(CONFUSION_INTERPRETER)
 
-$(CONFUSION_INTERPRETER): check-submodules
+$(CONFUSION_INTERPRETER): check-submodules check-deps
 	@echo "Building MDL interpreter..."
-	@# Detect OS and install Boehm GC if needed
-	@if [ "$$(uname)" = "Darwin" ]; then \
-		if [ ! -f /opt/homebrew/lib/libgc.dylib ] && [ ! -f /usr/local/lib/libgc.dylib ]; then \
-			echo "Installing Boehm GC via Homebrew..."; \
-			brew install bdw-gc; \
-		fi; \
-	elif [ "$$(uname)" = "Linux" ]; then \
-		if ! pkg-config --exists bdw-gc 2>/dev/null; then \
-			echo "Installing Boehm GC..."; \
-			if command -v apt-get >/dev/null 2>&1; then \
-				echo "Detected Debian/Ubuntu - use: sudo apt-get install libgc-dev"; \
-			elif command -v yum >/dev/null 2>&1; then \
-				echo "Detected RedHat/CentOS - use: sudo yum install gc-devel"; \
-			elif command -v dnf >/dev/null 2>&1; then \
-				echo "Detected Fedora - use: sudo dnf install gc-devel"; \
-			else \
-				echo "Please install Boehm GC (bdw-gc) for your distribution"; \
-			fi; \
-			exit 1; \
-		fi; \
-	fi
-	@# Patch Makefile to use pkg-config for GC
+	@# Patch Makefile to use pkg-config for GC (Linux/macOS compatibility)
 	@if ! grep -q "pkg-config" $(CONFUSION_DIR)/Makefile; then \
 		echo "Patching confusion-mdl Makefile for pkg-config support..."; \
 		sed -i.bak 's|^LIBS = -lgc -lgccpp|GC_CFLAGS := $$(shell pkg-config --cflags bdw-gc 2>/dev/null \|\| echo "-I/opt/homebrew/include")\nGC_LIBS := $$(shell pkg-config --libs bdw-gc 2>/dev/null \|\| echo "-L/opt/homebrew/lib -lgc")\nLIBS = $$(GC_LIBS) -lgccpp|' $(CONFUSION_DIR)/Makefile; \
