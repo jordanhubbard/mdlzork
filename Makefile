@@ -1,5 +1,5 @@
 # Top-level Makefile for MDL Zork Web Launcher
-.PHONY: all clean clean-all venv deps interpreter run build run-native build-native run-native-server wasm-deps wasm-build wasm-serve wasm-all package package-native package-wasm clean-releases help mdlzork_771212 mdlzork_780124 mdlzork_791211 mdlzork_810722
+.PHONY: all clean clean-all venv deps interpreter run build run-native build-native run-native-server wasm-deps wasm-build wasm-serve wasm-all package package-native package-wasm clean-releases help check-submodules mdlzork_771212 mdlzork_780124 mdlzork_791211 mdlzork_810722
 
 # Local test server port
 SERVER_PORT := 8000
@@ -7,6 +7,18 @@ SERVER_PORT := 8000
 # Interpreter paths
 CONFUSION_DIR := confusion-mdl
 CONFUSION_INTERPRETER := $(CONFUSION_DIR)/mdli
+
+# ============================================================================
+# Submodule Management
+# ============================================================================
+
+# Check if submodules are initialized, initialize if necessary
+check-submodules:
+	@if [ ! -f "$(CONFUSION_DIR)/Makefile" ]; then \
+		echo "⚠️  Submodules not initialized. Running 'git submodule update --init --recursive'..."; \
+		git submodule update --init --recursive; \
+		echo "✅ Submodules initialized"; \
+	fi
 
 # WASM paths
 EMSDK_DIR := emsdk
@@ -98,8 +110,10 @@ run-native: interpreter
 			echo "  make run-native $$GAME_NAME SAVEFILE/<filename>"; \
 			exit 1; \
 		elif [ -f "MDL/MADADV.SAVE" ]; then \
+			echo "Using MDL/MADADV.SAVE (no SAVEFILE directory found)"; \
 			../confusion-mdl/mdli -r "MDL/MADADV.SAVE"; \
 		elif [ -f "MTRZORK/ZORK.SAVE" ]; then \
+			echo "Using MTRZORK/ZORK.SAVE"; \
 			../confusion-mdl/mdli -r "MTRZORK/ZORK.SAVE"; \
 		else \
 			echo "Error: No save file found. Tried SAVEFILE directory, MDL/MADADV.SAVE, MTRZORK/ZORK.SAVE"; \
@@ -119,21 +133,10 @@ run-native-server:
 	@echo ""
 	@exit 1
 
-# WASM build target - builds browser-ready application
-wasm-build: wasm-deps
-	@echo "Building WASM version with Emscripten..."
-	cd $(CONFUSION_DIR) && . ../$(EMSDK_ACTIVATE) && $(MAKE) -f Makefile.wasm
-	@echo "Copying WASM files to web directory..."
-	@cp $(CONFUSION_DIR)/mdli.js $(CONFUSION_DIR)/mdli.wasm $(CONFUSION_DIR)/mdli.data web/
-	@echo "✅ WASM build complete"
-
-# Alias for wasm-build
-wasm-all: wasm-build
-
 # Build the MDL interpreter
-interpreter: $(CONFUSION_INTERPRETER)
+interpreter: check-submodules $(CONFUSION_INTERPRETER)
 
-$(CONFUSION_INTERPRETER):
+$(CONFUSION_INTERPRETER): check-submodules
 	@echo "Building MDL interpreter..."
 	@# Detect OS and install Boehm GC if needed
 	@if [ "$$(uname)" = "Darwin" ]; then \
@@ -206,6 +209,58 @@ $(EMSDK_ACTIVATE): $(EMSDK_DIR)
 	cd $(EMSDK_DIR) && ./emsdk install latest
 	cd $(EMSDK_DIR) && ./emsdk activate latest
 	@echo "✅ Emscripten SDK installed and activated"
+	@echo ""
+	@echo "⚠️  IMPORTANT: Run 'source $(EMSDK_ACTIVATE)' in your shell before building"
+	@echo "   Or use: eval \$$(make wasm-env)"
+
+# Export Emscripten environment variables
+wasm-env:
+	@echo "export PATH=\"$$(pwd)/$(EMSDK_DIR)/upstream/emscripten:$$PATH\""
+	@echo "export EMSDK=\"$$(pwd)/$(EMSDK_DIR)\""
+	@echo "export EM_CONFIG=\"$$(pwd)/$(EMSDK_DIR)/.emscripten\""
+
+# Check if Emscripten is available
+check-emscripten:
+	@if ! command -v emcc >/dev/null 2>&1; then \
+		echo "❌ Emscripten not found in PATH"; \
+		echo ""; \
+		echo "Please run:"; \
+		echo "  source $(EMSDK_ACTIVATE)"; \
+		echo ""; \
+		echo "Or:"; \
+		echo "  eval \$$(make wasm-env)"; \
+		exit 1; \
+	fi
+	@echo "✅ Emscripten found: $$(emcc --version | head -1)"
+
+# Build WASM version
+wasm-build: check-submodules check-emscripten
+	@echo "Building WASM interpreter..."
+	@echo "Source Emscripten environment..."
+	@GAME_DIRS=""; \
+	for game in mdlzork_771212 mdlzork_780124 mdlzork_791211 mdlzork_810722; do \
+		if [ -d "$$game" ]; then \
+			GAME_DIRS="$$GAME_DIRS ../$$game"; \
+		fi; \
+	done; \
+	if [ -f $(EMSDK_ACTIVATE) ]; then \
+		. $(EMSDK_ACTIVATE) && \
+		$(MAKE) -C $(CONFUSION_DIR) -f Makefile.wasm GAME_DIRS="$$GAME_DIRS"; \
+	else \
+		echo "❌ Emscripten not installed. Run 'make wasm-deps' first."; \
+		exit 1; \
+	fi
+	@echo "Copying WASM files to build directory..."
+	@mkdir -p $(WASM_BUILD_DIR)
+	@cp $(CONFUSION_DIR)/mdli.js $(CONFUSION_DIR)/mdli.wasm $(WASM_BUILD_DIR)/ 2>/dev/null || true
+	@cp $(CONFUSION_DIR)/test_wasm.html $(WASM_BUILD_DIR)/
+	@if [ -f $(CONFUSION_DIR)/mdli.data ]; then \
+		cp $(CONFUSION_DIR)/mdli.data $(WASM_BUILD_DIR)/; \
+	fi
+	@echo "✅ WASM files copied to $(WASM_BUILD_DIR)/"
+
+# Alias for wasm-build
+wasm-all: wasm-build
 
 # Serve WASM build for testing
 wasm-serve: wasm-build
