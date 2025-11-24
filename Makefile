@@ -343,9 +343,7 @@ wasm-build: check-submodules wasm-deps
 		fi; \
 	done; \
 	if [ -f $(EMSDK_ACTIVATE) ]; then \
-		export EMSDK="$$(pwd)/$(EMSDK_DIR)" && \
-		. $(EMSDK_ACTIVATE) && \
-		$(MAKE) -C $(CONFUSION_DIR) -f Makefile.wasm GAME_DIRS="$$GAME_DIRS"; \
+		bash -c 'cd $(EMSDK_DIR) && . ./emsdk_env.sh && cd - > /dev/null && $(MAKE) -C $(CONFUSION_DIR) -f Makefile.wasm GAME_DIRS="'"$$GAME_DIRS"'"'; \
 	else \
 		echo "❌ Emscripten not installed. Run 'make wasm-deps' first."; \
 		exit 1; \
