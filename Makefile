@@ -281,6 +281,8 @@ clean:
 	find web -type f -name "*.cpp" -delete 2>/dev/null || true
 	find web -type f -name "*.o" -delete 2>/dev/null || true
 	$(MAKE) -C $(CONFUSION_DIR) -f Makefile.wasm clean-wasm 2>/dev/null || true
+	rm -f web/mdli.js web/mdli.wasm web/mdli.data 2>/dev/null || true
+	rm -rf $(WASM_BUILD_DIR) 2>/dev/null || true
 	@echo "✅ Clean complete"
 
 # Clean everything including compiled interpreter
