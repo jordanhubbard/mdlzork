@@ -456,16 +456,14 @@ class ZorkGame {
                         this.terminal.writeln(`\x1b[90m[Loading from ${saveFilePath}]\x1b[0m`);
                         this.terminal.writeln('');
                         
-                        // Call the WASM main function with proper arguments
-                        // mdli -r <save-file-path>
-                        if (this.module.callMain) {
+                        // Call the WASM game starter function
+                        if (this.module._mdl_start_game) {
                             this.terminal.writeln('\x1b[36mInitializing game world...\x1b[0m');
                             this.terminal.writeln('');
                             
-                            // Call main with arguments
-                            // The interpreter will run and then wait for input
+                            // Call mdl_start_game with game directory and save file path
                             try {
-                                this.module.callMain(['-r', saveFilePath]);
+                                this.module.ccall('mdl_start_game', null, ['string', 'string'], [gameInfo.path, gameInfo.saveFile]);
                                 
                                 // If we get here, the interpreter returned normally
                                 // This means the game loop completed
@@ -500,28 +498,13 @@ class ZorkGame {
                                 }
                             }
                         } else {
-                            this.terminal.writeln('\x1b[31m[Error: callMain not available]\x1b[0m');
-                            throw new Error('callMain not available in WASM module');
+                            this.terminal.writeln('\x1b[31m[Error: mdl_start_game not available]\x1b[0m');
+                            throw new Error('mdl_start_game not available in WASM module');
                         }
                         
                     } catch(statError) {
-                        this.terminal.writeln('\x1b[33m[Warning: Save file not found: ' + saveFilePath + ']\x1b[0m');
-                        this.terminal.writeln('\x1b[33m[Attempting to start interpreter without save file]\x1b[0m');
+                        this.terminal.writeln('\x1b[33m[Warning: Could not start game: ' + statError.message + ']\x1b[0m');
                         this.terminal.writeln('');
-                        
-                        try {
-                            // Try calling main without arguments
-                            if (this.module.callMain) {
-                                this.module.callMain([]);
-                            }
-                        } catch(mainError) {
-                            if (mainError && mainError.message && mainError.message.includes('exit')) {
-                                this.terminal.writeln('\x1b[90m[Interpreter exited]\x1b[0m');
-                                this.stopGame();
-                            } else {
-                                throw mainError;
-                            }
-                        }
                     }
                 } else {
                     throw new Error('Filesystem not available');
