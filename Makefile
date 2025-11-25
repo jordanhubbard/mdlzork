@@ -146,8 +146,8 @@ EMSDK_ACTIVATE := $(EMSDK_DIR)/emsdk_env.sh
 WASM_BUILD_DIR := wasm-build
 WASM_INTERPRETER := $(CONFUSION_DIR)/mdli.js
 
-# Default target - build WASM
-all: build
+# Default target - build and run WASM
+all: run
 
 # ============================================================================
 # High-Level Targets (Recommended)
@@ -167,7 +167,16 @@ build: wasm-build
 	@echo "Then open: http://localhost:8000/index.html"
 
 # Run application (serve WASM in browser)
-run: serve-wasm
+run: build
+	@echo ""
+	@echo "Starting web server for WASM build..."
+	@echo "  📡 Server: http://localhost:8000"
+	@echo "  📄 Main UI: http://localhost:8000/web/"
+	@echo "  🧪 Test page: http://localhost:8000/web/test-simple.html"
+	@echo ""
+	@echo "Press Ctrl+C to stop server"
+	@echo ""
+	python3 -m http.server 8000
 
 # Build native interpreter (CLI or server use)
 build-native: interpreter
