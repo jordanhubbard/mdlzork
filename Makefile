@@ -369,6 +369,12 @@ wasm-build: check-submodules wasm-deps
 		cp $(CONFUSION_DIR)/mdli.data $(WASM_BUILD_DIR)/; \
 	fi
 	@echo "✅ WASM files copied to $(WASM_BUILD_DIR)/"
+	@echo "Copying WASM files to web directory..."
+	@cp $(CONFUSION_DIR)/mdli.js $(CONFUSION_DIR)/mdli.wasm web/ 2>/dev/null || true
+	@if [ -f $(CONFUSION_DIR)/mdli.data ]; then \
+		cp $(CONFUSION_DIR)/mdli.data web/; \
+	fi
+	@echo "✅ WASM files copied to web/"
 
 # Alias for wasm-build
 wasm-all: wasm-build
