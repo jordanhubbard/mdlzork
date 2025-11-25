@@ -23,22 +23,22 @@ class ZorkGame {
         this.gameVersions = {
             'zork-810722': {
                 name: 'Zork 1981-07-22 (Final MDL)',
-                path: '/games/zork-810722',
+                path: '/game/mdlzork_810722',
                 saveFile: 'MDL/MADADV.SAVE'
             },
             'zork-791211': {
                 name: 'Zork 1979-12-11 (616 points)',
-                path: '/games/zork-791211',
+                path: '/game/mdlzork_791211',
                 saveFile: 'MDL/MADADV.SAVE'
             },
             'zork-780124': {
                 name: 'Zork 1978-01-24 ⚠️ INCOMPLETE END-GAME',
-                path: '/games/zork-780124',
+                path: '/game/mdlzork_780124',
                 saveFile: 'MDL/MADADV.SAVE'
             },
             'zork-771212': {
                 name: 'Zork 1977-12-12 (500 points, no end-game)',
-                path: '/games/zork-771212',
+                path: '/game/mdlzork_771212',
                 saveFile: 'MDL/MADADV.SAVE'
             }
         };
@@ -358,19 +358,19 @@ class ZorkGame {
             // Log available game versions
             if (this.module.FS) {
                 try {
-                    const gameDirs = this.module.FS.readdir('/games');
+                    const gameDirs = this.module.FS.readdir('/game');
                     const versions = gameDirs.filter(f => f !== '.' && f !== '..');
                     if (versions.length > 0) {
                         this.terminal.writeln('\x1b[90mAvailable game versions: ' + versions.join(', ') + '\x1b[0m');
                         
                         // Debug: Check if original_source is loaded
                         try {
-                            const zork810722 = this.module.FS.readdir('/games/zork-810722');
-                            this.terminal.writeln('\x1b[90m[Debug] zork-810722 contents: ' + zork810722.filter(f => f !== '.' && f !== '..').slice(0, 10).join(', ') + '\x1b[0m');
+                            const zork810722 = this.module.FS.readdir('/game/mdlzork_810722');
+                            this.terminal.writeln('\x1b[90m[Debug] mdlzork_810722 contents: ' + zork810722.filter(f => f !== '.' && f !== '..').slice(0, 10).join(', ') + '\x1b[0m');
                             
                             // Check for original_source subdirectory
                             if (zork810722.includes('original_source')) {
-                                const origSrc = this.module.FS.readdir('/games/zork-810722/original_source');
+                                const origSrc = this.module.FS.readdir('/game/mdlzork_810722/original_source');
                                 this.terminal.writeln('\x1b[90m[Debug] original_source has ' + (origSrc.length - 2) + ' files\x1b[0m');
                             } else {
                                 this.terminal.writeln('\x1b[33m[Debug] original_source directory NOT found\x1b[0m');
@@ -382,8 +382,8 @@ class ZorkGame {
                         this.terminal.writeln('');
                     }
                 } catch(e) {
-                    console.error('Error reading games directory:', e);
-                    this.terminal.writeln('\x1b[33m[Warning] Could not read /games directory: ' + e.message + '\x1b[0m');
+                    console.error('Error reading game directory:', e);
+                    this.terminal.writeln('\x1b[33m[Warning] Could not read /game directory: ' + e.message + '\x1b[0m');
                 }
             }
             
