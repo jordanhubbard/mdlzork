@@ -304,19 +304,8 @@ class ZorkGame {
         this.waitingForInput = false;
         
         try {
-            // Configure Emscripten module with proper stdin handling
+            // Configure Emscripten module with proper stdin/stdout/stderr handling
             const moduleConfig = {
-                // Redirect stdout/stderr to terminal
-                print: (text) => {
-                    this.terminal.write(text + '\r\n');
-                },
-                printErr: (text) => {
-                    this.terminal.write('\x1b[31m[ERROR] ' + text + '\x1b[0m\r\n');
-                },
-                
-                // Don't define stdin callback - let Emscripten use its default TTY handling
-                // We'll set up a proper terminal device instead
-                
                 preRun: [function(module) {
                     // Set up custom stdin handling before runtime starts
                     var self = this;
