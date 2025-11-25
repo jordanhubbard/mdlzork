@@ -356,21 +356,25 @@ wasm-build: check-submodules wasm-deps
 		fi; \
 	done; \
 	if [ -f $(EMSDK_ACTIVATE) ]; then \
-		bash -c 'cd $(EMSDK_DIR) && . ./emsdk_env.sh && cd - > /dev/null && $(MAKE) -C $(CONFUSION_DIR) -f Makefile.wasm GAME_DIRS="'"$$GAME_DIRS"'"'; \
+		bash -c 'cd $(EMSDK_DIR) && . ./emsdk_env.sh && cd - > /dev/null && $(MAKE) -C $(CONFUSION_DIR) -f Makefile.wasm mdli.js GAME_DIRS="'"$$GAME_DIRS"'"'; \
 	else \
 		echo "❌ Emscripten not installed. Run 'make wasm-deps' first."; \
 		exit 1; \
 	fi
 	@echo "Copying WASM files to build directory..."
 	@mkdir -p $(WASM_BUILD_DIR)
-	@cp $(CONFUSION_DIR)/mdli.js $(CONFUSION_DIR)/mdli.wasm $(WASM_BUILD_DIR)/ 2>/dev/null || true
+	@if [ ! -f $(CONFUSION_DIR)/mdli.js ] || [ ! -f $(CONFUSION_DIR)/mdli.wasm ]; then \
+		echo "❌ WASM build failed - mdli.js or mdli.wasm not found"; \
+		exit 1; \
+	fi
+	@cp $(CONFUSION_DIR)/mdli.js $(CONFUSION_DIR)/mdli.wasm $(WASM_BUILD_DIR)/
 	@cp $(CONFUSION_DIR)/test_wasm.html $(WASM_BUILD_DIR)/
 	@if [ -f $(CONFUSION_DIR)/mdli.data ]; then \
 		cp $(CONFUSION_DIR)/mdli.data $(WASM_BUILD_DIR)/; \
 	fi
 	@echo "✅ WASM files copied to $(WASM_BUILD_DIR)/"
 	@echo "Copying WASM files to web directory..."
-	@cp $(CONFUSION_DIR)/mdli.js $(CONFUSION_DIR)/mdli.wasm web/ 2>/dev/null || true
+	@cp $(CONFUSION_DIR)/mdli.js $(CONFUSION_DIR)/mdli.wasm web/
 	@if [ -f $(CONFUSION_DIR)/mdli.data ]; then \
 		cp $(CONFUSION_DIR)/mdli.data web/; \
 	fi
