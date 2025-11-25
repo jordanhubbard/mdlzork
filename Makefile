@@ -1,6 +1,8 @@
 # Top-level Makefile for MDL Zork Web Launcher
 .PHONY: all clean clean-all venv deps interpreter run build run-native build-native run-native-server wasm-deps wasm-build wasm-serve wasm-all package package-native package-wasm clean-releases help check-submodules check-deps install-deps mdlzork_771212 mdlzork_780124 mdlzork_791211 mdlzork_810722
 
+ .DEFAULT_GOAL := run
+
 # Local test server port
 SERVER_PORT := 8000
 
