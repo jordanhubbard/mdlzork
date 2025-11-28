@@ -1,6 +1,6 @@
 # MDL Zork - Original Mainframe Zork Collection
 
-[![Build and Deploy WASM to GitHub Pages](https://github.com/jordanhubbard/mdlzork/actions/workflows/deploy-wasm.yml/badge.svg)](https://github.com/jordanhubbard/mdlzork/actions/workflows/deploy-wasm.yml)
+[![CI](https://github.com/jordanhubbard/mdlzork/actions/workflows/ci.yml/badge.svg)](https://github.com/jordanhubbard/mdlzork/actions/workflows/ci.yml)
 
 Play the original mainframe Zork games written in MDL (MIT Design Language) from 1977-1981, compiled to WebAssembly and running entirely in your browser as a Progressive Web App.
 
@@ -159,8 +159,7 @@ To start directly from a save file:
 ```
 mdlzork/
 ├── .github/workflows/    # CI/CD for auto-deployment
-│   ├── deploy-wasm.yml   # Deploy to GitHub Pages
-│   └── test-build.yml    # PR build validation
+│   └── ci.yml            # Build validation + GitHub Pages deployment
 ├── web/                  # Progressive Web App
 │   ├── index.html        # Main UI
 │   ├── app.js            # Game logic + WASM integration
