@@ -64,10 +64,10 @@ jobs:
           submodules: recursive
 
       - name: Cache Emscripten SDK
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: emsdk
-          key: ${{ runner.os }}-emsdk-${{ hashFiles('emsdk/.emscripten_version') }}
+          key: ${{ runner.os }}-emsdk-latest
           restore-keys: |
             ${{ runner.os }}-emsdk-
 
@@ -93,16 +93,17 @@ jobs:
           test -f confusion-mdl/mdli.js && echo "✓ mdli.js exists" || exit 1
           test -f confusion-mdl/mdli.wasm && echo "✓ mdli.wasm exists" || exit 1
           test -f confusion-mdl/mdli.data && echo "✓ mdli.data exists" || exit 1
-          
+
           echo ""
           echo "File sizes:"
           ls -lh confusion-mdl/mdli.js confusion-mdl/mdli.wasm confusion-mdl/mdli.data
-          
+
           echo ""
           echo "✓ WASM build successful!"
 
       - name: Prepare deployment directory
         run: |
+          CACHE_VERSION=$(git rev-parse --short HEAD)
           mkdir -p deploy
           # Copy web files
           cp -r web/* deploy/
@@ -110,16 +111,13 @@ jobs:
           cp confusion-mdl/mdli.js deploy/
           cp confusion-mdl/mdli.wasm deploy/
           cp confusion-mdl/mdli.data deploy/
-          # Fix paths in HTML (remove ../ prefix for WASM files)
-          sed -i 's|../confusion-mdl/mdli.js|mdli.js|g' deploy/index.html
-          sed -i 's|../confusion-mdl/mdli.js|mdli.js|g' deploy/test-simple.html 2>/dev/null || true
+          # Update cache-busting versions with git SHA (in deploy dir only)
+          sed -i "s|mdli.js?v=[0-9]*|mdli.js?v=${CACHE_VERSION}|g" deploy/index.html
+          sed -i "s|app.js?v=[0-9]*|app.js?v=${CACHE_VERSION}|g" deploy/index.html
+          # Update service worker cache name with git SHA
+          sed -i "s|mdlzork-v[0-9.]*|mdlzork-v${CACHE_VERSION}|" deploy/sw.js
           # Create .nojekyll to prevent GitHub Pages from processing
           touch deploy/.nojekyll
-          # Create README for gh-pages branch
-          echo "# MDL Zork - GitHub Pages Deployment" > deploy/README.md
-          echo "" >> deploy/README.md
-          echo "This branch contains the built and deployed version of MDL Zork." >> deploy/README.md
-          echo "Visit: https://$(echo $GITHUB_REPOSITORY | cut -d'/' -f1).github.io/$(echo $GITHUB_REPOSITORY | cut -d'/' -f2)/" >> deploy/README.md
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

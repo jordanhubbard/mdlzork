@@ -27,13 +27,21 @@
 
     <main>
         <div id="controls">
-            <select id="version-select" disabled>
-                <option value="zork-810722">Zork 1981-07-22 (Final MDL)</option>
-                <option value="zork-791211">Zork 1979-12-11 (616 points)</option>
-                <option value="zork-780124">Zork 1978-01-24 ⚠️ INCOMPLETE END-GAME</option>
-                <option value="zork-771212">Zork 1977-12-12 (500 points, no end-game)</option>
-            </select>
-            <button id="start-btn" disabled>Start Game</button>
+            <div class="control-group">
+                <select id="version-select" disabled>
+                    <option value="zork-810722">Zork 1981-07-22 (Final MDL, 585 pts)</option>
+                    <option value="zork-791211">Zork 1979-12-11 (616 pts)</option>
+                    <option value="zork-780124">Zork 1978-01-24 (Incomplete end-game)</option>
+                    <option value="zork-771212">Zork 1977-12-12 (500 pts, no end-game)</option>
+                </select>
+                <button id="start-btn" disabled>Start Game</button>
+            </div>
+            <div class="control-group">
+                <button id="save-btn" disabled>Save Game</button>
+                <button id="load-btn" disabled>Load Game</button>
+                <button id="export-btn" disabled>Export Save</button>
+                <button id="import-btn" disabled>Import Save</button>
+            </div>
         </div>
 
         <div id="status" class="loading">

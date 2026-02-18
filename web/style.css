@@ -49,9 +49,17 @@ main {
 /* Controls */
 #controls {
     display: flex;
-    gap: 10px;
+    gap: 15px;
     margin-bottom: 15px;
     flex-wrap: wrap;
+    align-items: center;
+}
+
+.control-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
 }
 
 select, button {
@@ -65,7 +73,7 @@ select, button {
     transition: all 0.2s;
 }
 
-select:hover, button:hover {
+select:hover, button:hover:not(:disabled) {
     background-color: #2a2a2a;
     box-shadow: 0 0 5px #33ff33;
 }
@@ -112,8 +120,10 @@ button:disabled {
     display: flex;
     flex-direction: column;
     min-height: 400px;
-    max-height: 600px;
-    box-shadow: inset 0 0 20px rgba(51, 255, 51, 0.1);
+    box-shadow:
+        inset 0 0 20px rgba(51, 255, 51, 0.1),
+        0 0 15px rgba(51, 255, 51, 0.15),
+        0 0 30px rgba(51, 255, 51, 0.05);
     position: relative;
 }
 
@@ -174,19 +184,23 @@ button:disabled {
     body {
         font-size: 12px;
     }
-    
+
     h1 {
         font-size: 18px;
     }
-    
+
     #terminal {
         font-size: 12px;
     }
-    
+
     #controls {
         flex-direction: column;
     }
-    
+
+    .control-group {
+        width: 100%;
+    }
+
     select, button {
         width: 100%;
     }

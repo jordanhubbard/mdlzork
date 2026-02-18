@@ -2,7 +2,7 @@
   "name": "MDL Zork - Original Mainframe Adventure",
   "short_name": "MDL Zork",
   "description": "Play the original mainframe Zork games (1977-1981) compiled to WebAssembly",
-  "start_url": "/index.html",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#33ff33",
@@ -26,14 +26,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "screenshots/terminal.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "label": "Terminal Interface"
     }
   ]
 }

@@ -1,5 +1,5 @@
 # Top-level Makefile for MDL Zork Web Launcher
-.PHONY: all clean clean-all venv deps interpreter run build run-native build-native run-native-server wasm-deps wasm-build wasm-serve wasm-all package package-native package-wasm clean-releases help check-submodules check-deps install-deps mdlzork_771212 mdlzork_780124 mdlzork_791211 mdlzork_810722
+.PHONY: all clean clean-all interpreter run build run-native build-native wasm-deps wasm-build wasm-serve package package-native package-wasm clean-releases clean-wasm validate help check-submodules check-deps install-deps
 
  .DEFAULT_GOAL := run
 
@@ -162,11 +162,11 @@ build: wasm-build
 	@echo ""
 	@echo "Files generated:"
 	@echo "  - $(CONFUSION_DIR)/mdli.js"
-	@echo "  - $(CONFUSION_DIR)/mdli.wasm"  
+	@echo "  - $(CONFUSION_DIR)/mdli.wasm"
 	@echo "  - $(CONFUSION_DIR)/mdli.data"
 	@echo ""
-	@echo "To test: make serve-wasm"
-	@echo "Then open: http://localhost:8000/index.html"
+	@echo "To test: make run"
+	@echo "Then open: http://localhost:8000/web/"
 
 # Run application (serve WASM in browser)
 run: build
@@ -174,44 +174,44 @@ run: build
 	@echo "Starting web server for WASM build..."
 	@echo "  📡 Server: http://localhost:8000"
 	@echo "  📄 Main UI: http://localhost:8000/web/"
-	@echo "  🧪 Test page: http://localhost:8000/web/test-simple.html"
 	@echo ""
 	@echo "Press Ctrl+C to stop server"
 	@echo ""
 	python3 -m http.server 8000
 
-# Build native interpreter (CLI or server use)
+# Build native interpreter (CLI use)
 build-native: interpreter
 	@echo ""
 	@echo "✅ Native interpreter built!"
 	@echo ""
-	@echo "Usage options:"
-	@echo "  CLI: cd mdlzork_810722 && ../confusion-mdl/mdli -r SAVEFILE/ZORK.SAVE"
-	@echo "  Server: make run-native-server"
+	@echo "Usage:"
+	@echo "  make run-native mdlzork_810722"
+	@echo "  make run-native mdlzork_810722 MDL/MADADV.SAVE"
 
 # Run native CLI version (compiled executable)
 # Usage: make run-native <game-name> [save-file]
 # Example: make run-native mdlzork_810722
-# Example: make run-native mdlzork_810722 SAVEFILE/ZORK.SAVE
+# Example: make run-native mdlzork_810722 MDL/MADADV.SAVE
 run-native: interpreter
 	@if [ -z "$(filter-out $@,$(MAKECMDGOALS))" ]; then \
 		echo ""; \
 		echo "Usage: make run-native <game-name> [save-file]"; \
 		echo ""; \
 		echo "Available games:"; \
-		echo "  - mdlzork_771212"; \
-		echo "  - mdlzork_780124"; \
-		echo "  - mdlzork_791211"; \
-		echo "  - mdlzork_810722"; \
+		echo "  - mdlzork_771212  (Zork 1977-12-12, 500 pts)"; \
+		echo "  - mdlzork_780124  (Zork 1978-01-24, incomplete end-game)"; \
+		echo "  - mdlzork_791211  (Zork 1979-12-11, 616 pts)"; \
+		echo "  - mdlzork_810722  (Zork 1981-07-22, final MDL, 585 pts)"; \
+		echo ""; \
+		echo "Not playable:"; \
+		echo "  - mdlzork_780402  (source only, no save files)"; \
 		echo ""; \
 		echo "Examples:"; \
 		echo "  make run-native mdlzork_810722"; \
 		echo "  make run-native mdlzork_810722 MDL/MADADV.SAVE"; \
 		echo ""; \
-		echo "Note: Save file is REQUIRED to bootstrap the game."; \
-		echo "  - If SAVEFILE contains exactly one file, it will be auto-selected."; \
-		echo "  - If SAVEFILE contains multiple files, you must specify one explicitly."; \
-		echo "  - Otherwise, falls back to MDL/MADADV.SAVE or MTRZORK/ZORK.SAVE"; \
+		echo "Note: A save file is REQUIRED to bootstrap the game."; \
+		echo "      Default is MDL/MADADV.SAVE if not specified."; \
 		exit 1; \
 	fi
 	@GAME_NAME=$(word 2,$(MAKECMDGOALS)); \
@@ -224,45 +224,39 @@ run-native: interpreter
 	cd "$$GAME_NAME" && \
 	if [ -n "$$SAVE_FILE" ]; then \
 		../confusion-mdl/mdli -r "$$SAVE_FILE"; \
+	elif [ -f "MDL/MADADV.SAVE" ]; then \
+		echo "Using MDL/MADADV.SAVE"; \
+		../confusion-mdl/mdli -r "MDL/MADADV.SAVE"; \
 	else \
-		SAVEFILE_COUNT=0; \
-		if [ -d "SAVEFILE" ]; then \
-			SAVEFILE_COUNT=$$(ls -1 "SAVEFILE" 2>/dev/null | wc -l | tr -d ' '); \
-		fi; \
-		if [ "$$SAVEFILE_COUNT" -eq 1 ]; then \
-			AUTO_SAVE=$$(ls -1 "SAVEFILE" | head -1); \
-			echo "Auto-selecting save file: SAVEFILE/$$AUTO_SAVE"; \
-			../confusion-mdl/mdli -r "SAVEFILE/$$AUTO_SAVE"; \
-		elif [ "$$SAVEFILE_COUNT" -gt 1 ]; then \
-			echo "Error: Multiple save files found in SAVEFILE directory:"; \
-			ls -1 "SAVEFILE" | sed 's/^/  - SAVEFILE\//'; \
-			echo ""; \
-			echo "Please specify which save file to use:"; \
-			echo "  make run-native $$GAME_NAME SAVEFILE/<filename>"; \
-			exit 1; \
-		elif [ -f "MDL/MADADV.SAVE" ]; then \
-			echo "Using MDL/MADADV.SAVE (no SAVEFILE directory found)"; \
-			../confusion-mdl/mdli -r "MDL/MADADV.SAVE"; \
-		elif [ -f "MTRZORK/ZORK.SAVE" ]; then \
-			echo "Using MTRZORK/ZORK.SAVE"; \
-			../confusion-mdl/mdli -r "MTRZORK/ZORK.SAVE"; \
-		else \
-			echo "Error: No save file found. Tried SAVEFILE directory, MDL/MADADV.SAVE, MTRZORK/ZORK.SAVE"; \
-			exit 1; \
-		fi; \
+		echo "Error: No save file found (tried MDL/MADADV.SAVE)"; \
+		exit 1; \
 	fi
 
-
-# Legacy Flask server removed - use WASM version instead
-run-native-server:
-	@echo "❌ Flask server has been removed"
-	@echo ""
-	@echo "The Flask-based server is no longer available."
-	@echo "Please use the WASM version instead:"
-	@echo ""
-	@echo "  make run       # Serve WASM version"
-	@echo ""
-	@exit 1
+# Validate all save files load correctly with the native interpreter
+validate: interpreter
+	@echo "Validating save files..."
+	@FAILURES=0; \
+	for game in mdlzork_771212 mdlzork_780124 mdlzork_791211 mdlzork_810722; do \
+		if [ -d "$$game" ] && [ -f "$$game/MDL/MADADV.SAVE" ]; then \
+			echo -n "  $$game/MDL/MADADV.SAVE ... "; \
+			if timeout 5 sh -c "cd $$game && echo 'QUIT' | ../confusion-mdl/mdli -r MDL/MADADV.SAVE" >/dev/null 2>&1; then \
+				echo "✅ OK"; \
+			else \
+				echo "❌ FAILED"; \
+				FAILURES=$$((FAILURES + 1)); \
+			fi; \
+		else \
+			echo "  $$game: skipped (no save file)"; \
+		fi; \
+	done; \
+	if [ $$FAILURES -gt 0 ]; then \
+		echo ""; \
+		echo "❌ $$FAILURES validation failure(s)"; \
+		exit 1; \
+	else \
+		echo ""; \
+		echo "✅ All save files validated"; \
+	fi
 
 # Build the MDL interpreter
 interpreter: check-submodules check-deps $(CONFUSION_INTERPRETER)
@@ -277,9 +271,6 @@ $(CONFUSION_INTERPRETER): check-submodules check-deps
 		sed -i.bak 's|^CXXFLAGS = \(.*\)|CXXFLAGS = \1 $$(GC_CFLAGS)|' $(CONFUSION_DIR)/Makefile; \
 	fi
 	$(MAKE) -C $(CONFUSION_DIR)
-
-# Run the web server (legacy - use run-native for explicit native server)
-# Note: 'run' now defaults to WASM version - use 'run-native' for server version
 
 # Clean build artifacts and temporary files
 clean:
@@ -323,7 +314,7 @@ $(EMSDK_ACTIVATE): $(EMSDK_DIR)
 	@echo "✅ Emscripten SDK installed and activated"
 	@echo ""
 	@echo "⚠️  IMPORTANT: Run 'source $(EMSDK_ACTIVATE)' in your shell before building"
-	@echo "   Or use: eval \$$(make wasm-env)"
+	@echo "   Or use: eval $$(make wasm-env)"
 
 # Export Emscripten environment variables
 wasm-env:
@@ -340,7 +331,7 @@ check-emscripten:
 		echo "  source $(EMSDK_ACTIVATE)"; \
 		echo ""; \
 		echo "Or:"; \
-		echo "  eval \$$(make wasm-env)"; \
+		echo "  eval $$(make wasm-env)"; \
 		exit 1; \
 	fi
 	@echo "✅ Emscripten found: $$(emcc --version | head -1)"
@@ -380,23 +371,16 @@ wasm-build: check-submodules wasm-deps
 	fi
 	@echo "✅ WASM files copied to web/"
 
-# Alias for wasm-build
-wasm-all: wasm-build
-
 # Serve WASM build for testing
 wasm-serve: wasm-build
 	@echo ""
 	@echo "Starting web server for WASM build..."
 	@echo "  📡 Server: http://localhost:8000"
 	@echo "  📄 Main UI: http://localhost:8000/web/"
-	@echo "  🧪 Test page: http://localhost:8000/web/test-simple.html"
 	@echo ""
 	@echo "Press Ctrl+C to stop server"
 	@echo ""
 	python3 -m http.server 8000
-
-# Alias
-serve-wasm: wasm-serve
 
 # Clean WASM build artifacts
 clean-wasm:
@@ -432,31 +416,9 @@ package-native: build-native
 	@echo "Creating launcher scripts..."
 	@echo '#!/bin/bash' > $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/play-zork-810722.sh
 	@echo 'cd mdlzork_810722' >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/play-zork-810722.sh
-	@echo '../mdli -r SAVEFILE/ZORK.SAVE 2>/dev/null || ../mdli -r MDL/MADADV.SAVE 2>/dev/null || ../mdli' >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/play-zork-810722.sh
+	@echo '../mdli -r MDL/MADADV.SAVE' >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/play-zork-810722.sh
 	@chmod +x $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/play-zork-810722.sh
-	@echo "MDL Zork Native Release" > $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "======================" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "This release includes:" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "- MDL interpreter (mdli)" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "- Multiple Zork game versions" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "To play:" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "  cd mdlzork_810722" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "  ../mdli -r SAVEFILE/ZORK.SAVE" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "Or use the launcher script:" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "  ./play-zork-810722.sh" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "Game Versions:" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "- mdlzork_771212: Zork 1977-12-12 (500 points)" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "- mdlzork_780124: Zork 1978-01-24 (with end-game)" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "- mdlzork_791211: Zork 1979-12-11 (616 points)" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "- mdlzork_810722: Zork 1981-07-22 (Final MDL)" >> $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
 	@echo "✅ Native release packaged: $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/"
-	@echo ""
-	@echo "To create archive:"
-	@echo "  cd $(RELEASE_DIR) && tar -czf mdlzork-$(VERSION)-native.tar.gz mdlzork-$(VERSION)/"
 
 # Package WASM release (browser-ready application)
 package-wasm: wasm-build
@@ -468,35 +430,8 @@ package-wasm: wasm-build
 		cp $(CONFUSION_DIR)/mdli.data $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/; \
 	fi
 	@echo "Copying HTML interface..."
-	@cp $(CONFUSION_DIR)/test_wasm.html $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/index.html
-	@echo "Creating README..."
-	@echo "MDL Zork WASM Release (Browser Application)" > $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "==========================================" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "This release runs entirely in your web browser - no server needed!" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "To use:" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "1. Serve these files with any web server:" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "   python3 -m http.server 8000" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "   (or use any static file hosting)" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "2. Open in browser:" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "   http://localhost:8000/index.html" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "Files included:" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "- mdli.js: JavaScript wrapper" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "- mdli.wasm: WebAssembly interpreter" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "- mdli.data: Preloaded game files (if present)" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "- index.html: Web interface" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
-	@echo "Works offline once loaded!" >> $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/README.txt
+	@cp -r web/* $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/
 	@echo "✅ WASM release packaged: $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/"
-	@echo ""
-	@echo "To create archive:"
-	@echo "  cd $(RELEASE_DIR) && tar -czf mdlzork-$(VERSION)-wasm.tar.gz mdlzork-$(VERSION)/"
-	@echo ""
-	@echo "Or zip:"
-	@echo "  cd $(RELEASE_DIR) && zip -r mdlzork-$(VERSION)-wasm.zip mdlzork-$(VERSION)/"
 
 # Package both releases
 package: package-native package-wasm
@@ -505,11 +440,6 @@ package: package-native package-wasm
 	@echo ""
 	@echo "Native release: $(NATIVE_RELEASE_DIR)/mdlzork-$(VERSION)/"
 	@echo "WASM release: $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/"
-	@echo ""
-	@echo "Create archives:"
-	@echo "  cd $(RELEASE_DIR)"
-	@echo "  tar -czf mdlzork-$(VERSION)-native.tar.gz mdlzork-$(VERSION)/"
-	@echo "  tar -czf mdlzork-$(VERSION)-wasm.tar.gz mdlzork-$(VERSION)/"
 
 # Clean release artifacts
 clean-releases:
@@ -520,60 +450,43 @@ help:
 	@echo "MDL Zork Build System"
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "High-Level Targets (Recommended):"
+	@echo "High-Level Targets:"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "  make build        - Build browser-ready WASM application (default)"
-	@echo "  make run          - Run WASM application in browser"
-	@echo ""
-	@echo "  make build-native      - Build native interpreter (CLI or server use)"
-	@echo "  make run-native        - Run native CLI version (interactive)"
-	@echo "  make run-native-server - Run native web launcher server"
-	@echo ""
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "WASM Build Targets (Browser Application):"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "  make wasm-deps    - Install Emscripten SDK (first time only, ~10-15 min)"
-	@echo "  make wasm-build    - Build WASM version"
-	@echo "  make wasm-all      - Build WASM (alias for wasm-build)"
-	@echo "  make wasm-serve    - Build WASM and start test server"
+	@echo "  make build        - Build browser-ready WASM application"
+	@echo "  make run          - Build and serve WASM application in browser"
+	@echo "  make build-native - Build native CLI interpreter"
+	@echo "  make run-native   - Run native CLI version (interactive)"
+	@echo "  make validate     - Test all save files load correctly"
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "Native Build Targets (Server Application):"
+	@echo "WASM Build Targets:"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "  make              - Build native interpreter and install Python deps"
-	@echo "  make interpreter  - Build native MDL interpreter only"
-	@echo "  make deps         - Install Python dependencies"
+	@echo "  make wasm-deps    - Install Emscripten SDK (first time only)"
+	@echo "  make wasm-build   - Build WASM version"
+	@echo "  make wasm-serve   - Build WASM and start test server"
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "Release Packaging Targets:"
+	@echo "Release Packaging:"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "  make package-native - Package native release (interpreter + games)"
 	@echo "  make package-wasm   - Package WASM release (browser-ready)"
 	@echo "  make package        - Package both native and WASM releases"
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Maintenance:"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "  make clean          - Clean build artifacts"
+	@echo "  make clean-wasm     - Clean WASM build artifacts"
+	@echo "  make clean-all      - Clean everything"
 	@echo "  make clean-releases - Clean release artifacts"
+	@echo "  make install-deps   - Install build dependencies"
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "Clean Targets:"
+	@echo "Quick Start:"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "  make clean        - Clean Python artifacts"
-	@echo "  make clean-wasm   - Clean WASM build artifacts"
-	@echo "  make clean-all    - Clean everything"
-	@echo ""
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "Quick Start (Browser Application):"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "  1. make build          # Builds WASM (installs Emscripten if needed)"
-	@echo "  2. make run            # Start test server and open in browser"
-	@echo ""
-	@echo "Quick Start (Native CLI Application):"
-	@echo "  1. make build-native  # Build native interpreter"
-	@echo "  2. make run-native    # Run CLI version (interactive)"
-	@echo ""
-	@echo "Quick Start (Native Server Application):"
-	@echo "  1. make build-native      # Build native interpreter"
-	@echo "  2. make run-native-server # Start web server on port 5001"
-	@echo ""
-	@echo "Quick Start (Release Packaging):"
-	@echo "  1. make package-native  # Package native release"
-	@echo "  2. make package-wasm    # Package WASM release"
-	@echo "  3. make package         # Package both"
+	@echo "  Browser:  make run"
+	@echo "  Native:   make build-native && make run-native mdlzork_810722"
+
+# Catch-all for game directory names used as make targets
+mdlzork_%:
+	@true
