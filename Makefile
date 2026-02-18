@@ -145,8 +145,11 @@ install-deps:
 # WASM paths
 EMSDK_DIR := emsdk
 EMSDK_ACTIVATE := $(EMSDK_DIR)/emsdk_env.sh
-WASM_BUILD_DIR := wasm-build
-WASM_INTERPRETER := $(CONFUSION_DIR)/mdli.js
+
+# Build directories
+BUILD_DIR := build
+WASM_BUILD_DIR := $(BUILD_DIR)/wasm
+WEB_BUILD_DIR := $(BUILD_DIR)/web
 
 # Default target - build and run WASM
 all: run
@@ -161,23 +164,24 @@ build: wasm-build
 	@echo "✅ WASM build complete!"
 	@echo ""
 	@echo "Files generated:"
-	@echo "  - $(CONFUSION_DIR)/mdli.js"
-	@echo "  - $(CONFUSION_DIR)/mdli.wasm"
-	@echo "  - $(CONFUSION_DIR)/mdli.data"
+	@echo "  - $(WASM_BUILD_DIR)/mdli.js"
+	@echo "  - $(WASM_BUILD_DIR)/mdli.wasm"
+	@echo "  - $(WASM_BUILD_DIR)/mdli.data"
+	@echo ""
+	@echo "Web app assembled in $(WEB_BUILD_DIR)/"
 	@echo ""
 	@echo "To test: make run"
-	@echo "Then open: http://localhost:8000/web/"
+	@echo "Then open: http://localhost:$(SERVER_PORT)"
 
 # Run application (serve WASM in browser)
 run: build
 	@echo ""
 	@echo "Starting web server for WASM build..."
-	@echo "  📡 Server: http://localhost:8000"
-	@echo "  📄 Main UI: http://localhost:8000/web/"
+	@echo "  📡 Server: http://localhost:$(SERVER_PORT)"
 	@echo ""
 	@echo "Press Ctrl+C to stop server"
 	@echo ""
-	python3 -m http.server 8000
+	python3 -m http.server $(SERVER_PORT) -d $(WEB_BUILD_DIR)
 
 # Build native interpreter (CLI use)
 build-native: interpreter
@@ -275,25 +279,19 @@ $(CONFUSION_INTERPRETER): check-submodules check-deps
 # Clean build artifacts and temporary files
 clean:
 	@echo "Cleaning build artifacts..."
+	rm -rf $(BUILD_DIR)
+	# Clean legacy build artifacts from previous build layout
+	rm -rf wasm-build
+	rm -f web/mdli.js web/mdli.wasm web/mdli.data
 	find . -type f -name ".DS_Store" -not -path "./emsdk/*" -delete 2>/dev/null || true
 	find . -type f -name "*.log" -not -path "./emsdk/*" -delete 2>/dev/null || true
 	find . -type f -name "*.backup" -not -path "./emsdk/*" -delete 2>/dev/null || true
 	find . -type f -name "*.bak" -not -path "./emsdk/*" -delete 2>/dev/null || true
-	find . -type f -name "*.wasm.o" -not -path "./emsdk/*" -delete 2>/dev/null || true
-	find web -type f -name "*.cpp" -delete 2>/dev/null || true
-	find web -type f -name "*.o" -delete 2>/dev/null || true
-	$(MAKE) -C $(CONFUSION_DIR) -f Makefile.wasm clean-wasm 2>/dev/null || true
-	rm -f web/mdli.js web/mdli.wasm web/mdli.data 2>/dev/null || true
-	rm -rf $(WASM_BUILD_DIR) 2>/dev/null || true
 	@echo "✅ Clean complete"
 
 # Clean everything including compiled interpreter
-clean-all: clean clean-wasm
+clean-all: clean
 	$(MAKE) -C $(CONFUSION_DIR) clean
-	find . -type f -name "*.o" -delete
-	find . -type f -name "*.a" -delete
-	find . -type f -name "*.so" -delete
-	find . -type f -name "*.dylib" -delete
 
 # ============================================================================
 # WASM Build Targets
@@ -347,49 +345,38 @@ wasm-build: check-submodules wasm-deps
 		fi; \
 	done; \
 	if [ -f $(EMSDK_ACTIVATE) ]; then \
-		bash -c 'cd $(EMSDK_DIR) && . ./emsdk_env.sh && cd - > /dev/null && $(MAKE) -C $(CONFUSION_DIR) -f Makefile.wasm mdli.js GAME_DIRS="'"$$GAME_DIRS"'"'; \
+		bash -c 'cd $(EMSDK_DIR) && . ./emsdk_env.sh && cd - > /dev/null && $(MAKE) -C $(CONFUSION_DIR) -f Makefile.wasm BUILD_DIR=../$(WASM_BUILD_DIR) GAME_DIRS="'"$$GAME_DIRS"'"'; \
 	else \
 		echo "❌ Emscripten not installed. Run 'make wasm-deps' first."; \
 		exit 1; \
 	fi
-	@echo "Copying WASM files to build directory..."
-	@mkdir -p $(WASM_BUILD_DIR)
-	@if [ ! -f $(CONFUSION_DIR)/mdli.js ] || [ ! -f $(CONFUSION_DIR)/mdli.wasm ]; then \
-		echo "❌ WASM build failed - mdli.js or mdli.wasm not found"; \
+	@echo "Verifying WASM build..."
+	@if [ ! -f $(WASM_BUILD_DIR)/mdli.js ] || [ ! -f $(WASM_BUILD_DIR)/mdli.wasm ]; then \
+		echo "❌ WASM build failed - mdli.js or mdli.wasm not found in $(WASM_BUILD_DIR)"; \
 		exit 1; \
 	fi
-	@cp $(CONFUSION_DIR)/mdli.js $(CONFUSION_DIR)/mdli.wasm $(WASM_BUILD_DIR)/
-	@cp $(CONFUSION_DIR)/test_wasm.html $(WASM_BUILD_DIR)/
-	@if [ -f $(CONFUSION_DIR)/mdli.data ]; then \
-		cp $(CONFUSION_DIR)/mdli.data $(WASM_BUILD_DIR)/; \
+	@echo "Assembling web application in $(WEB_BUILD_DIR)/..."
+	@mkdir -p $(WEB_BUILD_DIR)
+	@cp -r web/* $(WEB_BUILD_DIR)/
+	@cp $(WASM_BUILD_DIR)/mdli.js $(WASM_BUILD_DIR)/mdli.wasm $(WEB_BUILD_DIR)/
+	@if [ -f $(WASM_BUILD_DIR)/mdli.data ]; then \
+		cp $(WASM_BUILD_DIR)/mdli.data $(WEB_BUILD_DIR)/; \
 	fi
-	@echo "✅ WASM files copied to $(WASM_BUILD_DIR)/"
-	@echo "Copying WASM files to web directory..."
-	@cp $(CONFUSION_DIR)/mdli.js $(CONFUSION_DIR)/mdli.wasm web/
-	@if [ -f $(CONFUSION_DIR)/mdli.data ]; then \
-		cp $(CONFUSION_DIR)/mdli.data web/; \
-	fi
-	@echo "✅ WASM files copied to web/"
+	@echo "✅ Web application assembled in $(WEB_BUILD_DIR)/"
 
 # Serve WASM build for testing
 wasm-serve: wasm-build
 	@echo ""
 	@echo "Starting web server for WASM build..."
-	@echo "  📡 Server: http://localhost:8000"
-	@echo "  📄 Main UI: http://localhost:8000/web/"
+	@echo "  📡 Server: http://localhost:$(SERVER_PORT)"
 	@echo ""
 	@echo "Press Ctrl+C to stop server"
 	@echo ""
-	python3 -m http.server 8000
+	python3 -m http.server $(SERVER_PORT) -d $(WEB_BUILD_DIR)
 
 # Clean WASM build artifacts
 clean-wasm:
-	rm -rf $(WASM_BUILD_DIR)
-	$(MAKE) -C $(CONFUSION_DIR) -f Makefile.wasm clean-wasm 2>/dev/null || true
-	find $(CONFUSION_DIR) -name "*.wasm.o" -delete 2>/dev/null || true
-	find $(CONFUSION_DIR) -name "*.wasm" -delete 2>/dev/null || true
-	find $(CONFUSION_DIR) -name "mdli.js" -delete 2>/dev/null || true
-	find $(CONFUSION_DIR) -name "mdli.data" -delete 2>/dev/null || true
+	rm -rf $(BUILD_DIR)
 
 # ============================================================================
 # Release Packaging Targets
@@ -424,13 +411,8 @@ package-native: build-native
 package-wasm: wasm-build
 	@echo "Packaging WASM release..."
 	@mkdir -p $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)
-	@echo "Copying WASM files..."
-	@cp $(CONFUSION_DIR)/mdli.js $(CONFUSION_DIR)/mdli.wasm $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/ 2>/dev/null || true
-	@if [ -f $(CONFUSION_DIR)/mdli.data ]; then \
-		cp $(CONFUSION_DIR)/mdli.data $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/; \
-	fi
-	@echo "Copying HTML interface..."
-	@cp -r web/* $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/
+	@echo "Copying web application..."
+	@cp -r $(WEB_BUILD_DIR)/* $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/
 	@echo "✅ WASM release packaged: $(WASM_RELEASE_DIR)/mdlzork-$(VERSION)/"
 
 # Package both releases

@@ -81,22 +81,18 @@ jobs:
           ./emsdk activate latest
 
       - name: Build WASM
-        run: |
-          source emsdk/emsdk_env.sh
-          cd confusion-mdl
-          make -f Makefile.wasm clean-wasm
-          make -f Makefile.wasm
+        run: make build
 
-      - name: Verify WASM artifacts
+      - name: Verify build artifacts
         run: |
           echo "Checking for required build artifacts..."
-          test -f confusion-mdl/mdli.js && echo "✓ mdli.js exists" || exit 1
-          test -f confusion-mdl/mdli.wasm && echo "✓ mdli.wasm exists" || exit 1
-          test -f confusion-mdl/mdli.data && echo "✓ mdli.data exists" || exit 1
+          test -f build/wasm/mdli.js && echo "✓ mdli.js exists" || exit 1
+          test -f build/wasm/mdli.wasm && echo "✓ mdli.wasm exists" || exit 1
+          test -f build/web/index.html && echo "✓ web app assembled" || exit 1
 
           echo ""
           echo "File sizes:"
-          ls -lh confusion-mdl/mdli.js confusion-mdl/mdli.wasm confusion-mdl/mdli.data
+          ls -lh build/wasm/mdli.js build/wasm/mdli.wasm
 
           echo ""
           echo "✓ WASM build successful!"
@@ -104,13 +100,8 @@ jobs:
       - name: Prepare deployment directory
         run: |
           CACHE_VERSION=$(git rev-parse --short HEAD)
-          mkdir -p deploy
-          # Copy web files
-          cp -r web/* deploy/
-          # Copy WASM artifacts
-          cp confusion-mdl/mdli.js deploy/
-          cp confusion-mdl/mdli.wasm deploy/
-          cp confusion-mdl/mdli.data deploy/
+          # Copy assembled web app to deploy directory
+          cp -r build/web deploy
           # Update cache-busting versions with git SHA (in deploy dir only)
           sed -i "s|mdli.js?v=[0-9]*|mdli.js?v=${CACHE_VERSION}|g" deploy/index.html
           sed -i "s|app.js?v=[0-9]*|app.js?v=${CACHE_VERSION}|g" deploy/index.html
