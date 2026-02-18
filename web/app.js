@@ -198,11 +198,6 @@ class ZorkGame {
 
                 if (this.isRunning && this.module) {
                     this.sendToStdin(command + '\n');
-                    setTimeout(() => {
-                        if (this.isRunning) {
-                            this.terminal.write('> ');
-                        }
-                    }, 50);
                 } else {
                     this.terminal.writeln('\x1b[33m[Game not running. Click "Start Game" first.]\x1b[0m');
                 }
@@ -262,12 +257,15 @@ class ZorkGame {
     }
 
     sendToStdin(text) {
-        if (!this.module || !this.stdinBuffer) {
-            console.error('Module or stdin buffer not available');
-            return;
-        }
+        if (!this.module) return;
         for (let i = 0; i < text.length; i++) {
-            this.stdinBuffer.push(text.charCodeAt(i));
+            this.module.stdinBuffer.push(text.charCodeAt(i));
+        }
+        // If the interpreter is suspended waiting for input, wake it up
+        if (this.module.stdinResolve) {
+            const resolve = this.module.stdinResolve;
+            this.module.stdinResolve = null;
+            resolve(this.module.stdinBuffer.shift());
         }
     }
 
@@ -275,20 +273,20 @@ class ZorkGame {
         this.updateStatus('Loading WASM module...', 'loading');
         this.terminal.writeln('\x1b[33mLoading MDL interpreter...\x1b[0m');
 
-        this.stdinBuffer = [];
-        this.waitingForInput = false;
-
         try {
             const moduleConfig = {
                 preRun: [function(module) {
                     var self = this;
+
+                    // Set up the async stdin buffer used by EM_ASYNC_JS
+                    // in wasm_input.h (wasm_stdin_getchar reads from these)
+                    module.stdinBuffer = [];
+                    module.stdinResolve = null;
+
+                    // FS.init for stdout/stderr only; stdin is handled
+                    // entirely by wasm_stdin_getchar via EM_ASYNC_JS
                     module.FS.init(
-                        function() {
-                            if (self.stdinBuffer && self.stdinBuffer.length > 0) {
-                                return self.stdinBuffer.shift();
-                            }
-                            return null;
-                        },
+                        function() { return null; },
                         function(val) {
                             if (val !== null && val !== undefined) {
                                 if (val === 10) {
@@ -381,43 +379,33 @@ class ZorkGame {
         this.terminal.writeln('\x1b[36mStarting MDL interpreter...\x1b[0m');
         this.terminal.writeln('');
 
-        // Call the WASM game starter
+        // Call the WASM game starter (async: Asyncify suspends C code on stdin reads)
         try {
             if (!this.module._mdl_start_game) {
                 throw new Error('mdl_start_game not available in WASM module');
             }
 
-            const result = this.module.ccall('mdl_start_game', 'number', ['string', 'string'], [gameInfo.path, gameInfo.saveFile]);
+            const result = await this.module.ccall(
+                'mdl_start_game', 'number',
+                ['string', 'string'], [gameInfo.path, gameInfo.saveFile],
+                {async: true}
+            );
 
             if (result !== 0) {
-                // Check for error message from C++
                 let errorMsg = 'Unknown error';
                 if (this.module._mdl_get_last_error) {
                     errorMsg = this.module.ccall('mdl_get_last_error', 'string', [], []);
                 }
                 this.terminal.writeln(`\x1b[31mError starting game: ${errorMsg}\x1b[0m`);
-                this.stopGame();
             }
+            this.stopGame();
         } catch (mainError) {
             const errorMsg = mainError.message || mainError.toString();
-
-            if (errorMsg.includes('unreachable') || errorMsg.includes('Aborted') || errorMsg.includes('EOF')) {
-                this.terminal.writeln('');
-                this.terminal.writeln('\x1b[1;33m╔════════════════════════════════════════════════════════════╗\x1b[0m');
-                this.terminal.writeln('\x1b[1;33m║  KNOWN LIMITATION: Interactive Mode Not Fully Working   ║\x1b[0m');
-                this.terminal.writeln('\x1b[1;33m╚════════════════════════════════════════════════════════════╝\x1b[0m');
-                this.terminal.writeln('');
-                this.terminal.writeln('\x1b[36mThe game loaded and displayed the starting location.\x1b[0m');
-                this.terminal.writeln('\x1b[36mInteractive gameplay requires non-blocking I/O modifications\x1b[0m');
-                this.terminal.writeln('\x1b[36mto the MDL interpreter for the browser environment.\x1b[0m');
-                this.terminal.writeln('');
-            } else if (errorMsg.includes('exit')) {
-                this.stopGame();
-            } else {
+            if (!errorMsg.includes('exit(0)')) {
                 console.error('Game error:', mainError);
                 this.terminal.writeln('\x1b[31mError: ' + errorMsg + '\x1b[0m');
-                this.stopGame();
             }
+            this.stopGame();
         }
     }
 

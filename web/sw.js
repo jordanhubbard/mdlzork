@@ -3,7 +3,7 @@
  * Handles offline caching and asset management
  */
 
-const CACHE_NAME = 'mdlzork-v1.1.0';
+const CACHE_NAME = 'mdlzork-v2.0.0';
 const RUNTIME_CACHE = 'mdlzork-runtime';
 
 // Assets to cache on install (relative paths for GitHub Pages compatibility)
